@@ -1,0 +1,5 @@
+**/.git
+**/.firebase
+**/node_modules
+firebase-debug.log
+hosting-debug.log
