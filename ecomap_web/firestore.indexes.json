@@ -1,0 +1,63 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "users",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "zona", "order": "ASCENDING" },
+        { "fieldPath": "estadoActivo", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "recolectores",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "zona", "order": "ASCENDING" },
+        { "fieldPath": "estadoActivo", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "recolectores",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "vehiculoInfo.placa", "order": "ASCENDING" },
+        { "fieldPath": "estadoActivo", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ofertas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "recolectorId", "order": "ASCENDING" },
+        { "fieldPath": "estadoActivo", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ofertas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "centroId", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "ofertas",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "recolectorId", "order": "ASCENDING" },
+        { "fieldPath": "centroId", "order": "ASCENDING" },
+        { "fieldPath": "categoria", "order": "ASCENDING" },
+        { "fieldPath": "estado", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "centros_acopio",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "zona", "order": "ASCENDING" },
+        { "fieldPath": "estadoActivo", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

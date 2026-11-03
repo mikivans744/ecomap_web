@@ -1,0 +1,12 @@
+{
+  "name": "ecomap-admin-setup",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Script temporal para crear el administrador de ECOMAP",
+  "scripts": {
+    "setup-admin": "node setup_admin.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.7.0"
+  }
+}

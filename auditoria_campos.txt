@@ -1,0 +1,209 @@
+﻿# Auditoria de campos Firestore
+# Búsqueda en código del proyecto; se excluye scripts/node_modules por ser dependencias de terceros.
+
+## snake_case solicitado (lib/ y scripts/)
+lib\data\repositories\sync_repository_impl.dart:21:      'updated_at': updatedAt ?? DateTime.now(),
+lib\data\repositories\firestore_admin_repository.dart:18:        .where('is_active', isEqualTo: true)
+lib\data\repositories\firestore_admin_repository.dart:41:      updates['is_active'] = isActive;
+lib\data\repositories\firestore_admin_repository.dart:64:      displayName: data['display_name'] as String? ?? 'Administrador',
+lib\data\repositories\firestore_admin_repository.dart:66:      isActive: data['is_active'] as bool? ?? false,
+lib\data\repositories\firestore_admin_repository.dart:67:      createdAt: _readTimestamp(data['created_at']) ??
+lib\data\repositories\firestore_admin_repository.dart:69:      lastLoginAt: _readTimestamp(data['last_login_at']),
+
+## camelCase solicitado (lib/ y scripts/)
+scripts\setup_admin.mjs:46:    estadoActivo: true,
+scripts\setup_admin.mjs:48:    createdAt: new Date().toISOString(),
+scripts\setup_admin.mjs:49:    updatedAt: new Date().toISOString(),
+lib\presentation\providers\centro_acopio_providers.dart:8:typedef CentroAcopioWatchFilter = ({String? zona, bool? estadoActivo});
+lib\presentation\providers\centro_acopio_providers.dart:21:        estadoActivo: filter.estadoActivo,
+lib\data\repositories\firestore_admin_repository.dart:64:      displayName: data['display_name'] as String? ?? 'Administrador',
+lib\data\repositories\firestore_admin_repository.dart:67:      createdAt: _readTimestamp(data['created_at']) ??
+lib\data\repositories\firestore_admin_repository.dart:69:      lastLoginAt: _readTimestamp(data['last_login_at']),
+lib\domain\entities\admin_user.dart:8:    required this.displayName,
+lib\domain\entities\admin_user.dart:11:    required this.createdAt,
+lib\domain\entities\admin_user.dart:12:    this.lastLoginAt,
+lib\domain\entities\admin_user.dart:17:  final String displayName;
+lib\domain\entities\admin_user.dart:20:  final DateTime createdAt;
+lib\domain\entities\admin_user.dart:21:  final DateTime? lastLoginAt;
+lib\domain\services\system_notification_service.dart:19:                createdAt: DateTime.fromMillisecondsSinceEpoch(0),
+lib\domain\entities\centro_acopio_entity.dart:16:    required this.estadoActivo,
+lib\domain\entities\centro_acopio_entity.dart:30:  final bool estadoActivo;
+lib\domain\entities\centro_acopio_entity.dart:53:      estadoActivo: data['estadoActivo'] as bool? ?? false,
+lib\domain\entities\centro_acopio_entity.dart:69:      'estadoActivo': estadoActivo,
+lib\data\repositories\firestore_centro_acopio_repository.dart:18:    bool? estadoActivo,
+lib\data\repositories\firestore_centro_acopio_repository.dart:24:    if (estadoActivo != null) {
+lib\data\repositories\firestore_centro_acopio_repository.dart:25:      query = query.where('estadoActivo', isEqualTo: estadoActivo);
+lib\data\repositories\firestore_centro_acopio_repository.dart:114:    final wasActive = current.data()?['estadoActivo'] == true;
+lib\data\repositories\firestore_centro_acopio_repository.dart:127:      if ((snapshot.data()?['estadoActivo'] == true) != wasActive) {
+lib\data\repositories\firestore_centro_acopio_repository.dart:132:      transaction.update(reference, {'estadoActivo': !wasActive});
+lib\presentation\providers\user_providers.dart:8:typedef UserWatchFilter = ({String? zona, bool? estadoActivo});
+lib\presentation\providers\user_providers.dart:18:        estadoActivo: filter.estadoActivo,
+lib\data\repositories\firestore_publicacion_repository.dart:14:    bool? estadoActivo,
+lib\data\repositories\firestore_publicacion_repository.dart:24:    if (estadoActivo != null) {
+lib\data\repositories\firestore_publicacion_repository.dart:25:      query = query.where('estadoActivo', isEqualTo: estadoActivo);
+lib\data\repositories\firestore_publicacion_repository.dart:72:    final currentStatus = doc.data()?['estadoActivo'] ?? true;
+lib\data\repositories\firestore_publicacion_repository.dart:74:      'estadoActivo': !currentStatus,
+lib\data\repositories\firestore_publicacion_repository.dart:81:      'estadoActivo': false,
+lib\data\repositories\firestore_publicacion_repository.dart:101:      'estadoActivo': false,
+lib\presentation\providers\recolector_providers.dart:8:typedef RecolectorWatchFilter = ({String? zona, bool? estadoActivo});
+lib\presentation\providers\recolector_providers.dart:21:        estadoActivo: filter.estadoActivo,
+lib\data\repositories\sync_repository_impl.dart:14:    DateTime? updatedAt,
+lib\data\repositories\sync_repository_impl.dart:21:      'updated_at': updatedAt ?? DateTime.now(),
+lib\data\repositories\sync_repository_impl.dart:34:      updatedAt: DateTime.now(),
+lib\domain\entities\oferta_entity.dart:17:    required this.estadoActivo,
+lib\domain\entities\oferta_entity.dart:19:    this.createdAt,
+lib\domain\entities\oferta_entity.dart:35:  final bool estadoActivo;
+lib\domain\entities\oferta_entity.dart:37:  final DateTime? createdAt;
+lib\domain\entities\oferta_entity.dart:57:      estadoActivo: data['estadoActivo'] as bool? ?? false,
+lib\domain\entities\oferta_entity.dart:59:      createdAt: data['createdAt'] == null
+lib\domain\entities\oferta_entity.dart:61:          : readFirestoreDateTime(data['createdAt']),
+lib\domain\entities\oferta_entity.dart:86:        'estadoActivo': estadoActivo,
+lib\data\repositories\firestore_oferta_repository.dart:17:    bool? estadoActivo,
+lib\data\repositories\firestore_oferta_repository.dart:30:    if (estadoActivo != null) {
+lib\data\repositories\firestore_oferta_repository.dart:31:      query = query.where('estadoActivo', isEqualTo: estadoActivo);
+lib\data\repositories\firestore_oferta_repository.dart:70:    final currentStatus = doc.data()?['estadoActivo'] ?? true;
+lib\data\repositories\firestore_oferta_repository.dart:72:      'estadoActivo': !currentStatus,
+lib\data\repositories\firestore_oferta_repository.dart:120:        'estadoActivo': true,
+lib\data\repositories\firestore_oferta_repository.dart:168:        'estadoActivo': false,
+lib\data\repositories\firestore_oferta_repository.dart:209:        'estadoActivo': false,
+lib\data\repositories\firestore_oferta_repository.dart:222:            'estadoActivo': false,
+lib\data\repositories\firestore_oferta_repository.dart:265:    if (center['estadoActivo'] != true) {
+lib\data\repositories\firestore_oferta_repository.dart:268:    if (collector['estadoActivo'] != true) {
+lib\data\repositories\firestore_oferta_repository.dart:274:        vehicle['estadoActivo'] != true) {
+lib\data\repositories\firestore_user_repository.dart:14:  Stream<List<UserEntity>> watchAll({String? zona, bool? estadoActivo}) {
+lib\data\repositories\firestore_user_repository.dart:19:    if (estadoActivo != null) {
+lib\data\repositories\firestore_user_repository.dart:20:      query = query.where('estadoActivo', isEqualTo: estadoActivo);
+lib\data\repositories\firestore_user_repository.dart:81:        'estadoActivo': snapshot.data()?['estadoActivo'] != true,
+lib\presentation\providers\publicacion_providers.dart:11:  bool? estadoActivo,
+lib\presentation\providers\publicacion_providers.dart:25:        estadoActivo: filter.estadoActivo,
+lib\data\repositories\firestore_recolector_repository.dart:19:  Stream<List<RecolectorEntity>> watchAll({String? zona, bool? estadoActivo}) {
+lib\data\repositories\firestore_recolector_repository.dart:24:    if (estadoActivo != null) {
+lib\data\repositories\firestore_recolector_repository.dart:25:      query = query.where('estadoActivo', isEqualTo: estadoActivo);
+lib\data\repositories\firestore_recolector_repository.dart:58:    data['createdAt'] = FieldValue.serverTimestamp();
+lib\data\repositories\firestore_recolector_repository.dart:76:        'updatedAt': FieldValue.serverTimestamp(),
+lib\data\repositories\firestore_recolector_repository.dart:91:    if (data.containsKey('estadoActivo') &&
+lib\data\repositories\firestore_recolector_repository.dart:92:        data['estadoActivo'] != (initialData['estadoActivo'] == true)) {
+lib\data\repositories\firestore_recolector_repository.dart:93:      if (data.length == 1 && data['estadoActivo'] == true) {
+lib\data\repositories\firestore_recolector_repository.dart:138:          'updatedAt': FieldValue.serverTimestamp(),
+lib\data\repositories\firestore_recolector_repository.dart:151:    if (snapshot.data()?['estadoActivo'] != true) {
+lib\data\repositories\firestore_recolector_repository.dart:173:        .where('estadoActivo', isEqualTo: true)
+lib\data\repositories\firestore_recolector_repository.dart:213:      final plate = _activePlate({...data, 'estadoActivo': true});
+lib\data\repositories\firestore_recolector_repository.dart:225:      final update = <String, dynamic>{'estadoActivo': true};
+lib\data\repositories\firestore_recolector_repository.dart:227:        update['vehiculoInfo.estadoActivo'] = true;
+lib\data\repositories\firestore_recolector_repository.dart:234:          'updatedAt': FieldValue.serverTimestamp(),
+lib\data\repositories\firestore_recolector_repository.dart:248:        .where('estadoActivo', isEqualTo: true)
+lib\data\repositories\firestore_recolector_repository.dart:293:      'estadoActivo': false,
+lib\data\repositories\firestore_recolector_repository.dart:298:      'updatedAt': FieldValue.serverTimestamp(),
+lib\data\repositories\firestore_recolector_repository.dart:301:      update['vehiculoInfo.estadoActivo'] = false;
+lib\data\repositories\firestore_recolector_repository.dart:307:        'estadoActivo': false,
+lib\data\repositories\firestore_recolector_repository.dart:320:        'updatedAt': FieldValue.serverTimestamp(),
+lib\data\repositories\firestore_recolector_repository.dart:337:    if (data['estadoActivo'] != true || data['medioTransporte'] != 'vehiculo') {
+lib\domain\repositories\centro_acopio_repository.dart:6:    bool? estadoActivo,
+lib\domain\repositories\publicacion_repository.dart:7:    bool? estadoActivo,
+lib\domain\repositories\user_repository.dart:4:  Stream<List<UserEntity>> watchAll({String? zona, bool? estadoActivo});
+lib\domain\repositories\recolector_repository.dart:4:  Stream<List<RecolectorEntity>> watchAll({String? zona, bool? estadoActivo});
+lib\core\auth\admin_auth_service.dart:34:  static const String _activeField = 'estadoActivo';
+lib\core\auth\admin_auth_service.dart:74:      final estadoActivo = data?[_activeField] as bool? ?? false;
+lib\core\auth\admin_auth_service.dart:76:      return adminDoc.exists && role == _adminRole && estadoActivo;
+lib\core\auth\admin_auth_service.dart:98:      final estadoActivo = data[_activeField] as bool? ?? false;
+lib\core\auth\admin_auth_service.dart:100:      if (role != _adminRole || !estadoActivo) {
+lib\core\auth\admin_auth_service.dart:102:          'Acceso admin rechazado: role=$role, estadoActivo=$estadoActivo',
+lib\domain\entities\report_complaint.dart:12:    required this.createdAt,
+lib\domain\entities\report_complaint.dart:23:  final DateTime createdAt;
+lib\domain\entities\user_rating.dart:12:    required this.createdAt,
+lib\domain\entities\user_rating.dart:13:    this.updatedAt,
+lib\domain\entities\user_rating.dart:22:  final DateTime createdAt;
+lib\domain\entities\user_rating.dart:23:  final DateTime? updatedAt;
+lib\domain\entities\recycling_transaction.dart:13:    required this.createdAt,
+lib\domain\entities\recycling_transaction.dart:24:  final DateTime createdAt;
+lib\domain\entities\user_entity.dart:15:    required this.estadoActivo,
+lib\domain\entities\user_entity.dart:27:  final bool estadoActivo;
+lib\domain\entities\user_entity.dart:43:      estadoActivo: data['estadoActivo'] as bool? ?? false,
+lib\domain\entities\user_entity.dart:57:        'estadoActivo': estadoActivo,
+lib\domain\entities\recolector_entity.dart:16:    required this.estadoActivo,
+lib\domain\entities\recolector_entity.dart:30:  final bool estadoActivo;
+lib\domain\entities\recolector_entity.dart:48:      estadoActivo: data['estadoActivo'] as bool? ?? false,
+lib\domain\entities\recolector_entity.dart:63:        'estadoActivo': estadoActivo,
+lib\domain\entities\system_notification.dart:10:    required this.createdAt,
+lib\domain\entities\system_notification.dart:17:  final DateTime createdAt;
+lib\domain\entities\publicacion_entity.dart:19:    required this.estadoActivo,
+lib\domain\entities\publicacion_entity.dart:32:  final bool estadoActivo;
+lib\domain\entities\publicacion_entity.dart:49:      estadoActivo: data['estadoActivo'] as bool? ?? false,
+lib\domain\entities\publicacion_entity.dart:63:        'estadoActivo': estadoActivo,
+lib\presentation\providers\estadisticas_providers.dart:87:              data['estadoActivo'] == (filters.estado == 'activos')))
+lib\presentation\providers\estadisticas_providers.dart:155:    if (data['estadoActivo'] == true &&
+lib\presentation\providers\dashboard_stats_provider.dart:79:    usersProvider((zona: null, estadoActivo: true)),
+lib\presentation\providers\dashboard_stats_provider.dart:87:    estadoActivo: null,
+lib\presentation\providers\dashboard_stats_provider.dart:104:                .where((p) => p.estadoActivo && p.estado != 'vendido')
+lib\presentation\providers\mapa_providers.dart:47:      .where('estadoActivo', isEqualTo: true)
+lib\presentation\providers\mapa_providers.dart:59:      .where('estadoActivo', isEqualTo: true)
+lib\presentation\pages\dashboard\dashboard_page.dart:88:    final activeUsers = usersProvider((zona: null, estadoActivo: true));
+lib\presentation\pages\dashboard\dashboard_page.dart:103:    ref.invalidate(usersProvider((zona: null, estadoActivo: true)));
+lib\presentation\pages\centros\centros_page.dart:59:      centrosAcopioProvider((zona: null, estadoActivo: null)),
+lib\presentation\pages\centros\centros_page.dart:211:                  centrosAcopioProvider((zona: null, estadoActivo: null)),
+lib\presentation\pages\centros\centros_page.dart:231:        'activos' => center.estadoActivo,
+lib\presentation\pages\centros\centros_page.dart:232:        'inactivos' => !center.estadoActivo,
+lib\presentation\pages\centros\centros_page.dart:268:      ref.invalidate(centrosAcopioProvider((zona: null, estadoActivo: null)));
+lib\presentation\pages\centros\centros_page.dart:389:    final isDeactivating = center.estadoActivo;
+lib\presentation\pages\centros\centros_page.dart:574:        centro.estadoActivo ? AppColors.success : AppColors.error;
+lib\presentation\pages\centros\centros_page.dart:597:                  label: Text(centro.estadoActivo ? 'Activo' : 'Inactivo'),
+lib\presentation\pages\centros\centros_page.dart:648:                  tooltip: centro.estadoActivo
+lib\presentation\pages\centros\centros_page.dart:654:                    centro.estadoActivo
+lib\presentation\pages\ofertas\ofertas_page.dart:41:      centrosAcopioProvider((zona: null, estadoActivo: true)),
+lib\presentation\pages\ofertas\ofertas_page.dart:44:      recolectoresProvider((zona: null, estadoActivo: true)),
+lib\presentation\pages\moderacion\moderacion_page.dart:17:  DateTime get date => _readDate(data['fecha'] ?? data['createdAt']);
+lib\presentation\pages\moderacion\moderacion_page.dart:186:        'estadoActivo': false,
+lib\presentation\pages\centros\widgets\centro_form_dialog.dart:98:            estadoActivo: true,
+lib\presentation\pages\ofertas\widgets\oferta_status_timeline.dart:17:        at: oferta.createdAt ?? oferta.fechaOferta
+lib\presentation\pages\publicaciones\publicaciones_page.dart:58:            estadoActivo: null,
+lib\presentation\pages\publicaciones\publicaciones_page.dart:62:      usersProvider((zona: null, estadoActivo: null)),
+lib\presentation\pages\publicaciones\publicaciones_page.dart:225:                    estadoActivo: null,
+lib\presentation\pages\publicaciones\publicaciones_page.dart:247:        'activas' => item.estadoActivo,
+lib\presentation\pages\publicaciones\publicaciones_page.dart:248:        'inactivas' => !item.estadoActivo,
+lib\presentation\pages\publicaciones\publicaciones_page.dart:328:    final action = item.estadoActivo ? 'desactivar' : 'activar';
+lib\presentation\pages\publicaciones\publicaciones_page.dart:333:            Text('${item.estadoActivo ? 'Desactivar' : 'Activar'} publicación'),
+lib\presentation\pages\publicaciones\publicaciones_page.dart:342:            child: Text(item.estadoActivo ? 'Desactivar' : 'Activar'),
+lib\presentation\pages\publicaciones\publicaciones_page.dart:352:          'Publicación ${item.estadoActivo ? 'desactivada' : 'activada'}.',
+lib\presentation\pages\publicaciones\publicaciones_page.dart:387:        'estadoActivo': false,
+lib\presentation\pages\recolectores\recolectores_page.dart:50:      recolectoresProvider((zona: null, estadoActivo: null)),
+lib\presentation\pages\recolectores\recolectores_page.dart:199:                  recolectoresProvider((zona: null, estadoActivo: null)),
+lib\presentation\pages\recolectores\recolectores_page.dart:218:        'activos' => item.estadoActivo,
+lib\presentation\pages\recolectores\recolectores_page.dart:219:        'inactivos' => !item.estadoActivo,
+lib\presentation\pages\recolectores\recolectores_page.dart:270:      ref.invalidate(recolectoresProvider((zona: null, estadoActivo: null)));
+lib\presentation\pages\recolectores\recolectores_page.dart:364:    final isBlocking = recolector.estadoActivo;
+lib\presentation\pages\recolectores\recolectores_page.dart:439:        recolector.estadoActivo ? AppColors.success : AppColors.error;
+lib\presentation\pages\recolectores\recolectores_page.dart:465:                  label: Text(recolector.estadoActivo ? 'Activo' : 'Inactivo'),
+lib\presentation\pages\recolectores\recolectores_page.dart:536:                    tooltip: recolector.estadoActivo
+lib\presentation\pages\recolectores\recolectores_page.dart:542:                      recolector.estadoActivo
+lib\presentation\pages\publicaciones\widgets\publicacion_detail_dialog.dart:37:              _row('Activa', publicacion.estadoActivo ? 'Sí' : 'No'),
+lib\presentation\pages\recolectores\widgets\recolector_form_dialog.dart:171:            'estadoActivo': previous?.estadoActivo ?? true,
+lib\presentation\pages\recolectores\widgets\recolector_form_dialog.dart:187:            estadoActivo: true,
+lib\presentation\pages\publicaciones\widgets\publicacion_card.dart:28:    final status = _status(publicacion.estado, publicacion.estadoActivo);
+lib\presentation\pages\publicaciones\widgets\publicacion_card.dart:104:                  icon: Icon(publicacion.estadoActivo
+lib\presentation\pages\publicaciones\widgets\publicacion_card.dart:108:                      Text(publicacion.estadoActivo ? 'Desactivar' : 'Activar'),
+lib\presentation\pages\usuarios\usuarios_page.dart:61:          estadoActivo: switch (_statusFilter) {
+lib\presentation\pages\usuarios\usuarios_page.dart:204:                  estadoActivo: switch (_statusFilter) {
+lib\presentation\pages\usuarios\usuarios_page.dart:224:        'activos' => user.estadoActivo,
+lib\presentation\pages\usuarios\usuarios_page.dart:225:        'inactivos' => !user.estadoActivo,
+lib\presentation\pages\usuarios\usuarios_page.dart:294:                            DataCell(_statusChip(user.estadoActivo)),
+lib\presentation\pages\usuarios\usuarios_page.dart:315:                                      tooltip: user.estadoActivo
+lib\presentation\pages\usuarios\usuarios_page.dart:324:                                        user.estadoActivo
+lib\presentation\pages\usuarios\usuarios_page.dart:441:                _detailRow('Estado', user.estadoActivo ? 'Activo' : 'Inactivo'),
+lib\presentation\pages\usuarios\usuarios_page.dart:479:    final action = user.estadoActivo ? 'bloquear' : 'desbloquear';
+lib\presentation\pages\usuarios\usuarios_page.dart:484:            Text('${user.estadoActivo ? 'Bloquear' : 'Desbloquear'} usuario'),
+lib\presentation\pages\usuarios\usuarios_page.dart:493:            child: Text(user.estadoActivo ? 'Bloquear' : 'Desbloquear'),
+lib\presentation\pages\usuarios\usuarios_page.dart:502:          '${user.estadoActivo ? 'Bloqueando' : 'Desbloqueando'} usuario: ${user.uid}');
+lib\presentation\pages\usuarios\usuarios_page.dart:506:          'Usuario ${user.estadoActivo ? 'bloqueado' : 'desbloqueado'} exitosamente.');
+
+## Campos snake_case Firestore encontrados en la auditoria ampliada
+Antes de migrar: firestore_admin_repository.dart (is_active, display_name, created_at, last_login_at); sync_repository_impl.dart (requires_sync, updated_by, device_id, updated_at, synced_by, last_sync_requested_at); sync_status_model.dart (device_id, pending_count, last_sync_at, last_error).
+Colecciones con guion bajo y valores de estado como centros_acopio y en_camino se mantienen: no son nombres de campos.
+
+## Verificacion posterior
+Los campos snake_case anteriores ya no se leen ni se escriben en lib/. setup_admin.mjs ya usa estadoActivo, createdAt y updatedAt.
+migrate_to_camelcase.mjs conserva intencionalmente los identificadores antiguos para poder localizarlos y migrarlos. La busqueda de auditoria excluye esta tabla de compatibilidad y las dependencias de scripts/node_modules.
+
+## Resultado de la verificacion final
+Busqueda de las claves Firestore snake_case auditadas en lib/: 0 coincidencias.
+Busqueda de nombres de propiedad isActive en entidades y repositorios: 0 coincidencias.
+scripts/migrate_to_camelcase.mjs mantiene como excepcion intencional las claves antiguas necesarias para migrar documentos existentes.

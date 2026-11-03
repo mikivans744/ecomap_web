@@ -1,0 +1,15 @@
+{
+  "name": "ecomap-functions",
+  "private": true,
+  "description": "Cloud Functions for ECOMAP",
+  "engines": {
+    "node": "20"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "@google/generative-ai": "^0.21.0",
+    "cors": "^2.8.5",
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^5.0.0"
+  }
+}

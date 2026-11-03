@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.role == 'admin'
+        && get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.estadoActivo == true;
+    }
+
+    function isSignedIn() { return request.auth != null; }
+    function isSelf(uid) { return isSignedIn() && request.auth.uid == uid; }
+
+    match /admins/{uid} {
+      allow read: if isSelf(uid) || isAdmin();
+      allow write: if isAdmin();
+    }
+    match /audit_logs/{id} { allow read, write: if isAdmin(); }
+    match /sync_requests/{id} { allow read, write: if isAdmin(); }
+    match /devices/{id} {
+      allow read: if isAdmin();
+      allow write: if isSignedIn();
+    }
+    match /stats/{id} {
+      allow read: if isAdmin();
+      allow write: if isSignedIn();
+    }
+    match /notifications/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /support_tickets/{id} { allow read, write: if isSignedIn(); }
+    match /faqs/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /reports/{id} { allow read, write: if isSignedIn(); }
+    match /complaints/{id} { allow read, write: if isSignedIn(); }
+
+    match /usuarios/{uid} {
+      allow read: if isSignedIn();
+      allow create: if isSelf(uid);
+      allow update: if isSelf(uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+    match /publicaciones/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if (isSignedIn() && resource.data.usuarioId == request.auth.uid) || isAdmin();
+      allow delete: if isAdmin();
+    }
+    match /solicitudes/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() || isAdmin();
+      allow delete: if isAdmin();
+    }
+    match /ofertas/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() || isAdmin();
+      allow delete: if isAdmin();
+    }
+    match /ofertas_centro/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update: if isSignedIn() || isAdmin();
+      allow delete: if isAdmin();
+    }
+    match /categoria_material/{id} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    match /transactions/{id} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() || isAdmin();
+    }
+  }
+}
