@@ -27,8 +27,7 @@ class FirestoreOfertaRepository implements OfertaRepository {
     String? recolectorId,
     bool? estadoActivo,
   }) {
-    Query<Map<String, dynamic>> query =
-        _firestore.collection(_centerOffers);
+    Query<Map<String, dynamic>> query = _firestore.collection(_centerOffers);
     if (centroId != null) {
       query = query.where('centroId', isEqualTo: centroId);
     }
@@ -70,8 +69,7 @@ class FirestoreOfertaRepository implements OfertaRepository {
   }
 
   @override
-  Future<void> createNegotiationOffer(
-      NegociacionOfertaEntity entity) async {
+  Future<void> createNegotiationOffer(NegociacionOfertaEntity entity) async {
     final reference = entity.id.isEmpty
         ? _firestore.collection(_negotiationOffers).doc()
         : _firestore.collection(_negotiationOffers).doc(entity.id);
@@ -131,8 +129,8 @@ class FirestoreOfertaRepository implements OfertaRepository {
 
   @override
   Future<void> accept(String id) =>
-      _updateCenterOffer(id, {'estado': 'ACEPTADA'}, action: 'offer_accepted',
-          requiredState: 'OFERTADA');
+      _updateCenterOffer(id, {'estado': 'ACEPTADA'},
+          action: 'offer_accepted', requiredState: 'OFERTADA');
 
   @override
   Future<void> markInTransit(String id) {
@@ -142,9 +140,106 @@ class FirestoreOfertaRepository implements OfertaRepository {
   }
 
   @override
-  Future<void> finalize(String id) =>
-      _updateCenterOffer(id, {'estado': 'ENTREGADA'},
-          action: 'offer_delivered', requiredState: 'ACEPTADA');
+  Future<void> finalize(String id, {double? weightConfirmed}) async {
+    final reference = _firestore.collection(_centerOffers).doc(id);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    late Map<String, dynamic> before;
+    late Map<String, dynamic> after;
+    late Map<String, int> previousPoints;
+    late Map<String, int> nextPoints;
+    await _firestore.runTransaction((transaction) async {
+      final offerSnapshot = await transaction.get(reference);
+      if (!offerSnapshot.exists) throw StateError('No existe la oferta $id.');
+      final current = offerSnapshot.data() ?? const <String, dynamic>{};
+      if (current['estado'] != 'ACEPTADA') {
+        throw OfertaStateTransitionException(
+          'La oferta debe estar en estado ACEPTADA, '
+          'pero está en ${current['estado']}.',
+        );
+      }
+
+      final confirmedWeight = weightConfirmed ??
+          (current['weightConfirmed'] is num
+              ? (current['weightConfirmed'] as num).toDouble()
+              : (current['pesoKg'] as num?)?.toDouble());
+      if (confirmedWeight == null ||
+          !confirmedWeight.isFinite ||
+          confirmedWeight < 0) {
+        throw ArgumentError.value(
+          confirmedWeight,
+          'weightConfirmed',
+          'El peso confirmado debe ser un número no negativo.',
+        );
+      }
+      final points = confirmedWeight.round();
+      final actorIds = <String>{
+        current['recolectorId'] as String? ?? '',
+        current['centroId'] as String? ?? '',
+      }..remove('');
+      if (actorIds.length != 2) {
+        throw StateError(
+          'La oferta debe tener un recolector y un centro válidos.',
+        );
+      }
+      final userReferences = {
+        for (final actorId in actorIds)
+          actorId: _firestore.collection('usuarios').doc(actorId),
+      };
+      final userSnapshots = <String, DocumentSnapshot<Map<String, dynamic>>>{};
+      for (final entry in userReferences.entries) {
+        userSnapshots[entry.key] = await transaction.get(entry.value);
+      }
+      for (final entry in userSnapshots.entries) {
+        if (!entry.value.exists) {
+          throw StateError(
+            'No existe el usuario asociado a la oferta: ${entry.key}.',
+          );
+        }
+      }
+
+      before = {
+        'estado': current['estado'],
+        'weightConfirmed': current['weightConfirmed'],
+      };
+      after = {
+        'estado': 'ENTREGADA',
+        'weightConfirmed': confirmedWeight,
+        'finalizedAt': now,
+      };
+      previousPoints = {};
+      nextPoints = {};
+      for (final entry in userSnapshots.entries) {
+        final currentPoints = _readInt(entry.value.data()?['puntos']);
+        previousPoints[entry.key] = currentPoints;
+        nextPoints[entry.key] = currentPoints + points;
+      }
+
+      transaction.update(reference, {
+        ...after,
+        'updatedAt': now,
+      });
+      for (final entry in userReferences.entries) {
+        transaction.update(entry.value, {
+          'puntos': nextPoints[entry.key],
+          'updatedAt': now,
+        });
+      }
+    });
+
+    await _auditService.log(
+      action: 'offer_delivered',
+      entityType: 'oferta_centro',
+      entityId: id,
+      before: {
+        ...before,
+        'puntos': previousPoints,
+      },
+      after: {
+        ...after,
+        'puntos': nextPoints,
+      },
+    );
+  }
 
   @override
   Future<void> cancel(String id, {String? reason}) =>
@@ -158,8 +253,8 @@ class FirestoreOfertaRepository implements OfertaRepository {
     final snapshot = await _firestore.collection(_centerOffers).get();
     return snapshot.docs
         .map(OfertaEntity.fromFirestore)
-        .where((offer) =>
-            offer.categoria.toLowerCase().contains(normalizedQuery))
+        .where(
+            (offer) => offer.categoria.toLowerCase().contains(normalizedQuery))
         .toList(growable: false);
   }
 
@@ -196,4 +291,6 @@ class FirestoreOfertaRepository implements OfertaRepository {
         'rechazada' || 'cancelada' => 'RECHAZADA',
         _ => state,
       };
+
+  int _readInt(dynamic value) => value is num ? value.toInt() : 0;
 }

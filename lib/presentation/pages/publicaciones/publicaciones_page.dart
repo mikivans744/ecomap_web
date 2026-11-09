@@ -10,8 +10,10 @@ import '../../../domain/entities/publicacion_entity.dart';
 import '../../../domain/entities/user_entity.dart';
 import '../../../domain/repositories/publicacion_repository.dart';
 import '../../providers/publicacion_providers.dart';
+import '../../providers/material_category_provider.dart';
 import '../../providers/user_providers.dart';
 import '../../widgets/async_states.dart';
+import '../../widgets/category_catalog_notice.dart';
 import '../../widgets/scaffold_with_navigation.dart';
 import 'widgets/publicacion_card.dart';
 import 'widgets/publicacion_detail_dialog.dart';
@@ -66,6 +68,9 @@ class _PublicacionesPageState extends ConsumerState<PublicacionesPage> {
             estadoActivo: null,
           )))
         : ref.watch(publicacionSearchProvider(_query));
+    final categoryCatalog =
+        ref.watch(materialCategoryCatalogProvider).valueOrNull ??
+            MaterialCategoryCatalog.fallback;
     final usersAsync = ref.watch(
       usersProvider((zona: null, estadoActivo: null)),
     );
@@ -90,7 +95,11 @@ class _PublicacionesPageState extends ConsumerState<PublicacionesPage> {
             padding: const EdgeInsets.all(20),
             child: Column(
               children: [
-                _buildFilters(publicationsAsync),
+                CategoryCatalogNotice(
+                  catalog: categoryCatalog,
+                  onSeed: _seedCategoryCatalog,
+                ),
+                _buildFilters(categoryCatalog),
                 const SizedBox(height: 16),
                 Expanded(
                   child: publicationsAsync.when(
@@ -103,6 +112,7 @@ class _PublicacionesPageState extends ConsumerState<PublicacionesPage> {
                       usersAsync.valueOrNull ?? const <UserEntity>[],
                       publicationRepository,
                       canModerate,
+                      categoryCatalog,
                     ),
                   ),
                 ),
@@ -114,13 +124,10 @@ class _PublicacionesPageState extends ConsumerState<PublicacionesPage> {
     );
   }
 
-  Widget _buildFilters(AsyncValue<List<PublicacionEntity>> publications) {
-    final categories = publications.maybeWhen(
-      data: (items) =>
-          items.map((item) => item.categoria).toSet().toList()..sort(),
-      orElse: () => <String>[],
-    );
-    if (_category != _all && !categories.contains(_category)) {
+  Widget _buildFilters(MaterialCategoryCatalog categoryCatalog) {
+    final categories = categoryCatalog.categories;
+    if (_category != _all &&
+        !categories.any((category) => category.id == _category)) {
       _category = _all;
     }
     return LayoutBuilder(
@@ -164,7 +171,8 @@ class _PublicacionesPageState extends ConsumerState<PublicacionesPage> {
             value: _category,
             options: {
               _all: 'Todas las categorías',
-              for (final category in categories) category: category,
+              for (final category in categories)
+                category.id: category.displayName,
             },
             onChanged: (value) => setState(() {
               _category = value;
@@ -237,6 +245,7 @@ class _PublicacionesPageState extends ConsumerState<PublicacionesPage> {
     List<UserEntity> users,
     PublicacionRepository repository,
     bool canModerate,
+    MaterialCategoryCatalog categoryCatalog,
   ) {
     final usersById = {for (final user in users) user.uid: user};
     final filtered = items.where((item) {
@@ -247,7 +256,8 @@ class _PublicacionesPageState extends ConsumerState<PublicacionesPage> {
       };
       return activeMatches &&
           (_status == _all || item.estado == _status) &&
-          (_category == _all || item.categoria == _category);
+          (_category == _all ||
+              materialCategoryId(item.categoria, categoryCatalog) == _category);
     }).toList(growable: false);
     if (filtered.isEmpty) {
       return const EmptyState(
@@ -273,11 +283,17 @@ class _PublicacionesPageState extends ConsumerState<PublicacionesPage> {
               final item = pageItems[index];
               return PublicacionCard(
                 publicacion: item,
+                categoryLabel:
+                    displayMaterialCategory(item.categoria, categoryCatalog),
                 vendedorEmail: usersById[item.userId]?.email ?? '',
                 onDetails: () => showDialog<void>(
                   context: context,
                   builder: (context) => PublicacionDetailDialog(
                     publicacion: item,
+                    categoryLabel: displayMaterialCategory(
+                      item.categoria,
+                      categoryCatalog,
+                    ),
                     vendedor: usersById[item.userId],
                     ofertas: const [],
                   ),
@@ -287,9 +303,8 @@ class _PublicacionesPageState extends ConsumerState<PublicacionesPage> {
                 onSoftDelete: canModerate
                     ? (id, adminId) => _softDelete(item, repository)
                     : null,
-                onMarkSold: canModerate
-                    ? () => _markSold(item, repository)
-                    : null,
+                onMarkSold:
+                    canModerate ? () => _markSold(item, repository) : null,
               );
             },
           ),
@@ -446,5 +461,19 @@ class _PublicacionesPageState extends ConsumerState<PublicacionesPage> {
         content: Text(message),
         backgroundColor: isError ? AppColors.error : null,
       ));
+  }
+
+  Future<void> _seedCategoryCatalog() async {
+    try {
+      await ref.read(materialCategoryRepositoryProvider).seedOfficialCatalog();
+      ref.invalidate(materialCategoryCatalogProvider);
+      if (mounted) _showMessage('Catálogo oficial sembrado correctamente.');
+    } catch (error, stackTrace) {
+      debugPrint(
+          'No se pudo sembrar el catálogo de categorías: $error\n$stackTrace');
+      if (mounted) {
+        _showMessage('No se pudo sembrar el catálogo oficial.', isError: true);
+      }
+    }
   }
 }

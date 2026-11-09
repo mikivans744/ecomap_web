@@ -6,6 +6,7 @@ import 'package:ecomap_web/domain/entities/user_entity.dart';
 import 'package:ecomap_web/domain/repositories/publicacion_repository.dart';
 import 'package:ecomap_web/presentation/pages/publicaciones/publicaciones_page.dart';
 import 'package:ecomap_web/presentation/providers/oferta_providers.dart';
+import 'package:ecomap_web/presentation/providers/material_category_provider.dart';
 import 'package:ecomap_web/presentation/providers/publicacion_providers.dart';
 import 'package:ecomap_web/presentation/providers/user_providers.dart';
 import 'package:flutter/material.dart';
@@ -25,6 +26,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          materialCategoryCatalogProvider.overrideWith(
+            (ref) => Stream.value(MaterialCategoryCatalog.fallback),
+          ),
           adminPermissionsProvider.overrideWithValue(
             const AdminPermissions(canModerate: false),
           ),

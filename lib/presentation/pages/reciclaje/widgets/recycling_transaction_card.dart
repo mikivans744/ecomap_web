@@ -8,12 +8,14 @@ class RecyclingTransactionCard extends StatelessWidget {
   const RecyclingTransactionCard({
     super.key,
     required this.transaction,
+    this.categoryLabel,
     required this.userName,
     required this.collectorName,
     required this.onTap,
   });
 
   final RecyclingTransaction transaction;
+  final String? categoryLabel;
   final String userName;
   final String collectorName;
   final VoidCallback onTap;
@@ -30,9 +32,10 @@ class RecyclingTransactionCard extends StatelessWidget {
           child: Icon(Icons.recycling, color: AppColors.primary),
         ),
         title: Text(
-          transaction.materialCategory.isEmpty
-              ? 'Material sin categoría'
-              : transaction.materialCategory,
+          categoryLabel ??
+              (transaction.materialCategory.isEmpty
+                  ? 'Material sin categoría'
+                  : transaction.materialCategory),
           style: const TextStyle(fontWeight: FontWeight.w600),
         ),
         subtitle: Padding(
@@ -51,7 +54,10 @@ class RecyclingTransactionCard extends StatelessWidget {
               ),
               _InfoLabel(
                 icon: Icons.calendar_today_outlined,
-                label: DateFormat.yMMMd().format(transaction.createdAt),
+                label: transaction.createdAt.millisecondsSinceEpoch <= 0
+                    ? 'Sin fecha'
+                    : DateFormat('dd/MM/yyyy HH:mm')
+                        .format(transaction.createdAt),
               ),
             ],
           ),

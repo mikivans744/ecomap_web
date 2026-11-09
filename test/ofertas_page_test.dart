@@ -6,6 +6,7 @@ import 'package:ecomap_web/domain/repositories/oferta_repository.dart';
 import 'package:ecomap_web/presentation/pages/ofertas/ofertas_page.dart';
 import 'package:ecomap_web/presentation/providers/centro_acopio_providers.dart';
 import 'package:ecomap_web/presentation/providers/oferta_providers.dart';
+import 'package:ecomap_web/presentation/providers/material_category_provider.dart';
 import 'package:ecomap_web/presentation/providers/recolector_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,7 +26,7 @@ class _FakeOfertaRepository implements OfertaRepository {
   Future<void> createNegotiationOffer(NegociacionOfertaEntity entity) async {}
 
   @override
-  Future<void> finalize(String id) async {}
+  Future<void> finalize(String id, {double? weightConfirmed}) async {}
 
   @override
   Future<void> markInTransit(String id) async {}
@@ -90,6 +91,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          materialCategoryCatalogProvider.overrideWith(
+            (ref) => Stream.value(MaterialCategoryCatalog.fallback),
+          ),
           adminPermissionsProvider.overrideWithValue(const AdminPermissions()),
           ofertaRepositoryProvider.overrideWithValue(_FakeOfertaRepository()),
           ofertasProvider((

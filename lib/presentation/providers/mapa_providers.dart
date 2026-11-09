@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/centro_acopio_entity.dart';
 import '../../domain/entities/publicacion_entity.dart';
 import '../../domain/entities/recolector_entity.dart';
+import 'material_category_provider.dart';
 
 class MapaFiltros {
   const MapaFiltros({
@@ -75,6 +76,7 @@ final centrosMapaProvider = StreamProvider<List<CentroAcopioEntity>>((ref) {
 final publicacionesMapaProvider =
     StreamProvider<List<PublicacionEntity>>((ref) {
   final filtros = ref.watch(mapaFiltrosProvider);
+  final selectedMaterial = materialCategoryId(filtros.material);
   return FirebaseFirestore.instance
       .collection('publicaciones')
       .where('estado', isEqualTo: 'DISPONIBLE')
@@ -86,6 +88,7 @@ final publicacionesMapaProvider =
               item.longitud != null &&
               item.latitud != 0 &&
               item.longitud != 0 &&
-              (filtros.material == null || item.categoria == filtros.material))
+              (selectedMaterial == null ||
+                  materialCategoryId(item.categoria) == selectedMaterial))
           .toList(growable: false));
 });

@@ -8,12 +8,14 @@ import '../../../../domain/entities/user_entity.dart';
 class PublicacionDetailDialog extends StatelessWidget {
   const PublicacionDetailDialog({
     required this.publicacion,
+    this.categoryLabel,
     this.vendedor,
     this.ofertas = const [],
     super.key,
   });
 
   final PublicacionEntity publicacion;
+  final String? categoryLabel;
   final UserEntity? vendedor;
   final List<OfertaEntity> ofertas;
 
@@ -29,7 +31,7 @@ class PublicacionDetailDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               _row('Descripción', publicacion.descripcion),
-              _row('Categoría', publicacion.categoria),
+              _row('Categoría', categoryLabel ?? publicacion.categoria),
               _row('Peso', '${publicacion.peso} kg'),
               _row('Precio sugerido', '\$${publicacion.precioSugerido}'),
               _row('Calidad', publicacion.calidad),

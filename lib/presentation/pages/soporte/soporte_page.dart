@@ -80,17 +80,24 @@ class _SoportePageState extends ConsumerState<SoportePage> {
                       value: _allStatuses,
                       child: Text('Todos los estados'),
                     ),
-                    DropdownMenuItem(value: 'open', child: Text('Abiertos')),
                     DropdownMenuItem(
-                      value: 'in_progress',
+                      value: 'ABIERTO',
+                      child: Text('Abiertos'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'EN_PROGRESO',
                       child: Text('En progreso'),
                     ),
                     DropdownMenuItem(
-                      value: 'resolved',
+                      value: 'RESPONDIDO',
+                      child: Text('Respondidos'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'RESUELTO',
                       child: Text('Resueltos'),
                     ),
                     DropdownMenuItem(
-                      value: 'closed',
+                      value: 'CERRADO',
                       child: Text('Cerrados'),
                     ),
                   ],
@@ -143,7 +150,16 @@ class _SoportePageState extends ConsumerState<SoportePage> {
                       const SizedBox(height: 10),
                   itemBuilder: (context, index) => _TicketCard(
                     ticket: filtered[index],
-                    onTap: () => _manageTicket(filtered[index]),
+                    onTap: () => _showTicketDetails(filtered[index]),
+                    onTake: () =>
+                        _transitionTicket(filtered[index], 'EN_PROGRESO'),
+                    onRespond: () => _respondToTicket(filtered[index]),
+                    onResolve: () =>
+                        _transitionTicket(filtered[index], 'RESUELTO'),
+                    onClose: () =>
+                        _transitionTicket(filtered[index], 'CERRADO'),
+                    onReopen: () =>
+                        _transitionTicket(filtered[index], 'ABIERTO'),
                   ),
                 );
               },
@@ -277,36 +293,86 @@ class _SoportePageState extends ConsumerState<SoportePage> {
                 onRetry: () => ref.invalidate(supportNotificationsProvider),
               ),
               data: (notifications) {
-                if (notifications.isEmpty) {
-                  return const EmptyState(
-                    message: 'No hay notificaciones registradas.',
-                  );
-                }
-                return ListView.separated(
+                final securityAlerts = notifications
+                    .where((notification) =>
+                        notification.recipientUid.toUpperCase() == 'ADMIN' &&
+                        notification.type.toUpperCase() == 'SEGURIDAD')
+                    .toList(growable: false);
+                final sentNotifications = notifications
+                    .where((notification) =>
+                        notification.recipientUid.toUpperCase() != 'ADMIN')
+                    .toList(growable: false);
+                return ListView(
                   key: const Key('support_notifications_list'),
-                  itemCount: notifications.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final notification = notifications[index];
-                    return Card(
-                      child: ListTile(
-                        leading: const CircleAvatar(
-                          child: Icon(Icons.notifications_outlined),
-                        ),
-                        title: Text(notification.title),
-                        subtitle: Text(
-                          '${notification.body}\n'
-                          '${_statusLabel(notification.status)} · '
-                          '${_dateLabel(notification.createdAt)}',
-                        ),
-                        isThreeLine: true,
-                        trailing: Chip(
-                          label: Text(_statusLabel(notification.status)),
+                  children: [
+                    Text(
+                      'Alertas de seguridad del móvil',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    if (securityAlerts.isEmpty)
+                      const Text('No hay alertas de seguridad.')
+                    else
+                      ...securityAlerts.map(
+                        (notification) => Card(
+                          child: ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(Icons.security_outlined),
+                            ),
+                            title: Text(notification.title),
+                            subtitle: Text(
+                              '${notification.body}\n'
+                              '${_dateLabel(notification.createdAt)}',
+                            ),
+                            isThreeLine: true,
+                            trailing: notification.isRead
+                                ? const Chip(label: Text('Leída'))
+                                : TextButton(
+                                    key: Key(
+                                      'mark_security_notification_${notification.id}',
+                                    ),
+                                    onPressed: () => _runAction(
+                                      () => ref
+                                          .read(supportRepositoryProvider)
+                                          .markNotificationRead(
+                                              notification.id),
+                                      success: 'Alerta marcada como leída.',
+                                    ),
+                                    child: const Text('Marcar leída'),
+                                  ),
+                          ),
                         ),
                       ),
-                    );
-                  },
+                    const SizedBox(height: 20),
+                    Text(
+                      'Notificaciones enviadas a usuarios',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 8),
+                    if (sentNotifications.isEmpty)
+                      const Text('No hay notificaciones enviadas.')
+                    else
+                      ...sentNotifications.map(
+                        (notification) => Card(
+                          child: ListTile(
+                            leading: const CircleAvatar(
+                              child: Icon(Icons.notifications_outlined),
+                            ),
+                            title: Text(notification.title),
+                            subtitle: Text(
+                              '${notification.body}\n'
+                              '${notification.recipientUid.isEmpty ? 'Todos los usuarios' : notification.recipientUid} · '
+                              '${_statusLabel(notification.status)} · '
+                              '${_dateLabel(notification.createdAt)}',
+                            ),
+                            isThreeLine: true,
+                            trailing: Chip(
+                              label: Text(_statusLabel(notification.status)),
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
                 );
               },
             ),
@@ -392,81 +458,135 @@ class _SoportePageState extends ConsumerState<SoportePage> {
     ]);
   }
 
-  Future<void> _manageTicket(SupportTicket ticket) async {
-    var status = ticket.status;
-    final responseController = TextEditingController(
-      text: ticket.data['response'] as String? ?? '',
-    );
-    final saved = await showDialog<bool>(
+  Future<void> _showTicketDetails(SupportTicket ticket) async {
+    final history = ticket.history;
+    final legacyResponse =
+        ticket.data['respuestaAdmin'] ?? ticket.data['response'];
+    await showDialog<void>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(ticket.subject),
-          content: SizedBox(
-            width: 480,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text('Usuario: ${ticket.userId}'),
+      builder: (dialogContext) => AlertDialog(
+        title: Text(ticket.subject),
+        content: SizedBox(
+          width: 520,
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text('Usuario: ${ticket.userId}'),
+                Text('Estado: ${_statusLabel(ticket.status)}'),
+                Text('Creado: ${_dateLabel(ticket.createdAt)}'),
+                const Divider(height: 24),
+                Text(
+                  'Consulta',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                const SizedBox(height: 6),
+                SelectableText(ticket.description),
+                const Divider(height: 24),
+                Text(
+                  'Conversación',
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+                if (history.isEmpty && legacyResponse is String) ...[
                   const SizedBox(height: 8),
-                  Text('Creado: ${_dateLabel(ticket.createdAt)}'),
-                  const SizedBox(height: 12),
-                  SelectableText(ticket.description),
-                  const SizedBox(height: 20),
-                  DropdownButtonFormField<String>(
-                    key: const Key('ticket_status_editor'),
-                    value: _ticketStatuses.contains(status) ? status : 'open',
-                    decoration: const InputDecoration(labelText: 'Estado'),
-                    items: _ticketStatuses
-                        .map(
-                          (value) => DropdownMenuItem(
-                            value: value,
-                            child: Text(_statusLabel(value)),
-                          ),
-                        )
-                        .toList(growable: false),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setDialogState(() => status = value);
-                      }
-                    },
+                  _ConversationMessage(
+                    author: 'ADMIN',
+                    text: legacyResponse,
+                    date: _dateFromMillis(ticket.data['respondidoAt']),
                   ),
-                  TextField(
-                    key: const Key('ticket_response_field'),
-                    controller: responseController,
-                    decoration: const InputDecoration(
-                      labelText: 'Respuesta o nota de resolución',
+                ] else if (history.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 8),
+                    child: Text('Todavía no hay respuestas.'),
+                  )
+                else
+                  ...history.map(
+                    (message) => _ConversationMessage(
+                      author: message['autor'] as String? ??
+                          message['author'] as String? ??
+                          'Usuario',
+                      text: message['texto'] as String? ??
+                          message['text'] as String? ??
+                          '',
+                      date: _dateFromMillis(message['at']),
                     ),
-                    minLines: 2,
-                    maxLines: 4,
                   ),
-                ],
-              ),
+              ],
             ),
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('Cancelar'),
-            ),
-            FilledButton(
-              onPressed: () => Navigator.pop(dialogContext, true),
-              child: const Text('Guardar'),
-            ),
-          ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cerrar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _transitionTicket(
+    SupportTicket ticket,
+    String status,
+  ) async {
+    await _runAction(
+      () => ref.read(supportRepositoryProvider).updateTicket(
+            ticket.id,
+            status: status,
+            response: '',
+          ),
+      success: 'Ticket actualizado a ${_statusLabel(status)}.',
+    );
+  }
+
+  Future<void> _respondToTicket(SupportTicket ticket) async {
+    final responseController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Responder: ${ticket.subject}'),
+        content: SizedBox(
+          width: 480,
+          child: Form(
+            key: formKey,
+            child: TextFormField(
+              key: const Key('ticket_response_field'),
+              controller: responseController,
+              decoration: const InputDecoration(
+                labelText: 'Respuesta al usuario',
+              ),
+              minLines: 3,
+              maxLines: 6,
+              validator: _requiredValidator,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                Navigator.pop(dialogContext, true);
+              }
+            },
+            child: const Text('Enviar respuesta'),
+          ),
+        ],
       ),
     );
     if (saved == true && mounted) {
       await _runAction(
         () => ref.read(supportRepositoryProvider).updateTicket(
               ticket.id,
-              status: status,
+              status: 'RESPONDIDO',
               response: responseController.text.trim(),
             ),
-        success: 'Ticket actualizado.',
+        success: 'Respuesta enviada al usuario.',
       );
     }
     await _disposeControllers([responseController]);
@@ -691,8 +811,6 @@ class _SoportePageState extends ConsumerState<SoportePage> {
           : null;
 }
 
-const _ticketStatuses = ['open', 'in_progress', 'resolved', 'closed'];
-
 String _statusLabel(String status) => switch (status.toLowerCase()) {
       'open' || 'abierto' || 'abierta' => 'Abierto',
       'pending' || 'pendiente' => 'Pendiente',
@@ -701,6 +819,7 @@ String _statusLabel(String status) => switch (status.toLowerCase()) {
       'en_progreso' ||
       'en progreso' =>
         'En progreso',
+      'responded' || 'respondido' || 'respondida' => 'Respondido',
       'resolved' || 'resuelto' || 'resuelta' => 'Resuelto',
       'closed' || 'cerrado' || 'cerrada' => 'Cerrado',
       'sent' || 'delivered' => 'Enviado',
@@ -712,6 +831,10 @@ String _dateLabel(DateTime date) => date.year <= 1970
     ? 'Fecha no disponible'
     : DateFormat.yMd().add_jm().format(date);
 
+DateTime _dateFromMillis(dynamic value) => value is num
+    ? DateTime.fromMillisecondsSinceEpoch(value.toInt())
+    : DateTime.fromMillisecondsSinceEpoch(0);
+
 Future<void> _disposeControllers(
   Iterable<TextEditingController> controllers,
 ) async {
@@ -722,33 +845,153 @@ Future<void> _disposeControllers(
 }
 
 class _TicketCard extends StatelessWidget {
-  const _TicketCard({required this.ticket, required this.onTap});
+  const _TicketCard({
+    required this.ticket,
+    required this.onTap,
+    required this.onTake,
+    required this.onRespond,
+    required this.onResolve,
+    required this.onClose,
+    required this.onReopen,
+  });
 
   final SupportTicket ticket;
   final VoidCallback onTap;
+  final VoidCallback onTake;
+  final VoidCallback onRespond;
+  final VoidCallback onResolve;
+  final VoidCallback onClose;
+  final VoidCallback onReopen;
 
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: ListTile(
-        key: Key('support_ticket_${ticket.id}'),
-        onTap: onTap,
-        leading: const CircleAvatar(
-          child: Icon(Icons.support_agent_outlined),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ListTile(
+              key: Key('support_ticket_${ticket.id}'),
+              onTap: onTap,
+              leading: const CircleAvatar(
+                child: Icon(Icons.support_agent_outlined),
+              ),
+              title: Text(
+                ticket.subject,
+                style: const TextStyle(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                '${ticket.userId} · ${_dateLabel(ticket.createdAt)}\n'
+                '${ticket.description}',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              isThreeLine: true,
+              trailing: Chip(label: Text(_statusLabel(ticket.status))),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: switch (ticket.status) {
+                  'ABIERTO' => [
+                      OutlinedButton.icon(
+                        key: Key('take_ticket_${ticket.id}'),
+                        onPressed: onTake,
+                        icon: const Icon(Icons.assignment_ind_outlined),
+                        label: const Text('Tomar caso'),
+                      ),
+                      FilledButton.icon(
+                        key: Key('respond_ticket_${ticket.id}'),
+                        onPressed: onRespond,
+                        icon: const Icon(Icons.reply_outlined),
+                        label: const Text('Responder'),
+                      ),
+                    ],
+                  'EN_PROGRESO' => [
+                      FilledButton.icon(
+                        key: Key('respond_ticket_${ticket.id}'),
+                        onPressed: onRespond,
+                        icon: const Icon(Icons.reply_outlined),
+                        label: const Text('Responder'),
+                      ),
+                    ],
+                  'RESPONDIDO' => [
+                      FilledButton.icon(
+                        key: Key('resolve_ticket_${ticket.id}'),
+                        onPressed: onResolve,
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text('Resolver'),
+                      ),
+                      OutlinedButton.icon(
+                        key: Key('respond_again_ticket_${ticket.id}'),
+                        onPressed: onRespond,
+                        icon: const Icon(Icons.reply_outlined),
+                        label: const Text('Responder de nuevo'),
+                      ),
+                    ],
+                  'RESUELTO' => [
+                      FilledButton.icon(
+                        key: Key('close_ticket_${ticket.id}'),
+                        onPressed: onClose,
+                        icon: const Icon(Icons.lock_outline),
+                        label: const Text('Cerrar'),
+                      ),
+                      OutlinedButton.icon(
+                        key: Key('reopen_ticket_${ticket.id}'),
+                        onPressed: onReopen,
+                        icon: const Icon(Icons.restart_alt),
+                        label: const Text('Reabrir'),
+                      ),
+                    ],
+                  'CERRADO' => [
+                      OutlinedButton.icon(
+                        key: Key('reopen_ticket_${ticket.id}'),
+                        onPressed: onReopen,
+                        icon: const Icon(Icons.restart_alt),
+                        label: const Text('Reabrir'),
+                      ),
+                    ],
+                  _ => const <Widget>[],
+                },
+              ),
+            ),
+          ],
         ),
-        title: Text(
-          ticket.subject,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          '${ticket.userId} · ${_dateLabel(ticket.createdAt)}\n'
-          '${ticket.description}',
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        isThreeLine: true,
-        trailing: Chip(label: Text(_statusLabel(ticket.status))),
       ),
     );
   }
+}
+
+class _ConversationMessage extends StatelessWidget {
+  const _ConversationMessage({
+    required this.author,
+    required this.text,
+    required this.date,
+  });
+
+  final String author;
+  final String text;
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context) => Card(
+        color: AppColors.surfaceVariant,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '$author · ${_dateLabel(date)}',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+              const SizedBox(height: 6),
+              SelectableText(text),
+            ],
+          ),
+        ),
+      );
 }

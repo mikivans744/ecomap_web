@@ -3,6 +3,7 @@ import 'package:ecomap_web/domain/entities/publicacion_entity.dart';
 import 'package:ecomap_web/domain/entities/recolector_entity.dart';
 import 'package:ecomap_web/presentation/pages/mapa/mapa_page.dart';
 import 'package:ecomap_web/presentation/providers/mapa_providers.dart';
+import 'package:ecomap_web/presentation/providers/material_category_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,6 +29,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          materialCategoryCatalogProvider.overrideWith(
+            (ref) => Stream.value(MaterialCategoryCatalog.fallback),
+          ),
           centrosMapaProvider.overrideWith((ref) {
             final filters = ref.watch(mapaFiltrosProvider);
             return Stream.value(
@@ -70,7 +74,7 @@ void main() {
 
     await tester.tap(find.text('Material'));
     await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.text('vidrio').last);
+    await tester.tap(find.text('Vidrio').last);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.byKey(const Key('map_marker_centro_center-1')), findsOneWidget);

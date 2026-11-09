@@ -6,6 +6,7 @@ import '../../../../domain/entities/oferta_entity.dart';
 class OfertaCard extends StatelessWidget {
   const OfertaCard({
     required this.oferta,
+    this.categoryLabel,
     required this.recolectorNombre,
     required this.centroNombre,
     required this.placa,
@@ -15,6 +16,7 @@ class OfertaCard extends StatelessWidget {
   });
 
   final OfertaEntity oferta;
+  final String? categoryLabel;
   final String recolectorNombre;
   final String centroNombre;
   final String? placa;
@@ -66,7 +68,7 @@ class OfertaCard extends StatelessWidget {
               children: [
                 Chip(
                   avatar: const Icon(Icons.recycling_outlined, size: 16),
-                  label: Text(oferta.categoria),
+                  label: Text(categoryLabel ?? oferta.categoria),
                   visualDensity: VisualDensity.compact,
                 ),
                 Text('Peso: ${_formatNumber(oferta.peso)} kg'),

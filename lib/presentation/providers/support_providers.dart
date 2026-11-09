@@ -15,16 +15,19 @@ class SupportTicket {
       _readString(data, ['description', 'message', 'descripcion'], '');
   String get userId =>
       _readString(data, ['userId', 'uid', 'email'], 'Usuario no especificado');
-  String get status =>
-      switch (_readString(data, ['status', 'estado'], 'open').toLowerCase()) {
-        'abierto' || 'abierta' || 'pending' || 'pendiente' => 'open',
-        'en_progreso' || 'en progreso' || 'in progress' => 'in_progress',
-        'resuelto' || 'resuelta' => 'resolved',
-        'cerrado' || 'cerrada' => 'closed',
-        final value => value,
-      };
+  String get status => _canonicalTicketStatus(
+        _readString(data, ['estado', 'status'], 'ABIERTO'),
+      );
   DateTime get createdAt =>
       _readDate(data['createdAt'] ?? data['fechaCreacion']);
+  List<Map<String, dynamic>> get history {
+    final value = data['historial'];
+    if (value is! List) return const [];
+    return value
+        .whereType<Map>()
+        .map((entry) => Map<String, dynamic>.from(entry))
+        .toList(growable: false);
+  }
 
   static SupportTicket fromDocument(
     QueryDocumentSnapshot<Map<String, dynamic>> document,
@@ -58,9 +61,13 @@ class SupportNotification {
   final Map<String, dynamic> data;
 
   String get title => _readString(data, ['title', 'titulo'], '');
-  String get body => _readString(data, ['body', 'message', 'mensaje'], '');
+  String get body =>
+      _readString(data, ['cuerpo', 'body', 'message', 'mensaje'], '');
   String get status =>
       _readString(data, ['deliveryStatus', 'status', 'estado'], 'pending');
+  String get type => _readString(data, ['tipo', 'type'], '');
+  String get recipientUid => _readString(data, ['paraUid', 'userId'], '');
+  bool get isRead => data['leido'] as bool? ?? data['read'] as bool? ?? false;
   DateTime get createdAt =>
       _readDate(data['createdAt'] ?? data['fechaCreacion']);
 
@@ -101,6 +108,7 @@ abstract interface class SupportRepository {
     required String status,
     required String response,
   });
+  Future<void> markNotificationRead(String id);
   Future<void> saveFaq({
     String? id,
     required String question,
@@ -155,7 +163,8 @@ class FirestoreSupportRepository implements SupportRepository {
       'subject': subject,
       'description': description,
       'userId': userId,
-      'status': 'open',
+      'status': 'ABIERTO',
+      'estado': 'ABIERTO',
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });
@@ -167,13 +176,49 @@ class FirestoreSupportRepository implements SupportRepository {
     required String status,
     required String response,
   }) async {
-    await _firestore.collection('support_tickets').doc(id).update({
-      'status': status,
-      'response': response,
+    final canonicalStatus = _canonicalTicketStatus(status);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final ticketRef = _firestore.collection('support_tickets').doc(id);
+    final notificationRef = _firestore.collection('notifications').doc();
+    final responseText = response.trim();
+    final ticket = await ticketRef.get();
+    final recipientUid = _readString(
+      ticket.data() ?? const <String, dynamic>{},
+      ['uid', 'userId', 'paraUid'],
+      '',
+    );
+    final update = <String, dynamic>{
+      'status': canonicalStatus,
+      'estado': canonicalStatus,
       'updatedAt': FieldValue.serverTimestamp(),
-      if (status == 'resolved') 'resolvedAt': FieldValue.serverTimestamp(),
+      if (canonicalStatus == 'RESUELTO') 'resolvedAt': now,
+      if (responseText.isNotEmpty) ...{
+        'respuestaAdmin': responseText,
+        'response': responseText,
+        'respondidoAt': now,
+        'historial': FieldValue.arrayUnion([
+          {'autor': 'ADMIN', 'texto': responseText, 'at': now},
+        ]),
+      },
+    };
+    final batch = _firestore.batch();
+    batch.update(ticketRef, update);
+    batch.set(notificationRef, {
+      'paraUid': recipientUid,
+      'titulo': 'Soporte: $canonicalStatus',
+      'cuerpo': responseText.isNotEmpty
+          ? responseText
+          : 'El estado de tu solicitud cambió a $canonicalStatus.',
+      'tipo': 'SOPORTE',
+      'createdAt': now,
+      'leido': false,
     });
+    await batch.commit();
   }
+
+  @override
+  Future<void> markNotificationRead(String id) =>
+      _firestore.collection('notifications').doc(id).update({'leido': true});
 
   @override
   Future<void> saveFaq({
@@ -185,6 +230,8 @@ class FirestoreSupportRepository implements SupportRepository {
     final data = <String, dynamic>{
       'question': question,
       'answer': answer,
+      'pregunta': question,
+      'respuesta': answer,
       'active': active,
       'updatedAt': FieldValue.serverTimestamp(),
     };
@@ -230,9 +277,24 @@ String _readString(
   return fallback;
 }
 
+String _canonicalTicketStatus(String status) {
+  final normalized = status.trim().toLowerCase().replaceAll(' ', '_');
+  return switch (normalized) {
+    'open' || 'abierto' || 'abierta' || 'pending' || 'pendiente' => 'ABIERTO',
+    'in_progress' || 'en_progreso' => 'EN_PROGRESO',
+    'responded' || 'respondido' || 'respondida' => 'RESPONDIDO',
+    'resolved' || 'resuelto' || 'resuelta' => 'RESUELTO',
+    'closed' || 'cerrado' || 'cerrada' => 'CERRADO',
+    _ => status.trim().toUpperCase(),
+  };
+}
+
 DateTime _readDate(dynamic value) {
   if (value is Timestamp) return value.toDate();
   if (value is DateTime) return value;
+  if (value is num) {
+    return DateTime.fromMillisecondsSinceEpoch(value.toInt());
+  }
   if (value is String) return DateTime.tryParse(value) ?? DateTime(1970);
   return DateTime(1970);
 }

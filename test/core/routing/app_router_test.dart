@@ -4,8 +4,19 @@ import 'package:ecomap_web/core/auth/admin_auth_provider.dart';
 import 'package:ecomap_web/core/auth/admin_auth_state.dart';
 import 'package:ecomap_web/core/constants/route_names.dart';
 import 'package:ecomap_web/core/routing/app_router.dart';
+import 'package:ecomap_web/domain/entities/centro_acopio_entity.dart';
+import 'package:ecomap_web/domain/entities/negociacion_oferta_entity.dart';
+import 'package:ecomap_web/domain/entities/oferta_entity.dart';
+import 'package:ecomap_web/domain/entities/recolector_entity.dart';
+import 'package:ecomap_web/domain/entities/recycling_transaction.dart';
+import 'package:ecomap_web/domain/entities/user_entity.dart';
+import 'package:ecomap_web/domain/repositories/oferta_repository.dart';
 import 'package:ecomap_web/presentation/providers/centro_acopio_providers.dart';
 import 'package:ecomap_web/presentation/providers/dashboard_stats_provider.dart';
+import 'package:ecomap_web/presentation/providers/material_category_provider.dart';
+import 'package:ecomap_web/presentation/providers/oferta_providers.dart';
+import 'package:ecomap_web/presentation/providers/recolector_providers.dart';
+import 'package:ecomap_web/presentation/providers/recycling_transaction_providers.dart';
 import 'package:ecomap_web/presentation/providers/user_providers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -164,6 +175,7 @@ void main() {
         ),
       ),
     );
+
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     await tester.pump();
@@ -199,6 +211,7 @@ void main() {
         ),
       ),
     );
+
     await tester.pump();
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(router.routeInformationProvider.value.uri.path, RouteNames.splash);
@@ -279,7 +292,10 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     late GoRouter router;
-    await tester.pumpWidget(_adminApp((value) => router = value));
+    await tester.pumpWidget(_adminApp(
+      (value) => router = value,
+      extraOverrides: _recyclingOverrides(),
+    ));
     await tester.pumpAndSettle();
 
     expect(router.namedLocation('reciclaje'), RouteNames.reciclaje);
@@ -296,7 +312,10 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(_adminApp((_) {}));
+    await tester.pumpWidget(_adminApp(
+      (_) {},
+      extraOverrides: _recyclingOverrides(),
+    ));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Reciclaje'));
@@ -348,6 +367,16 @@ Widget _adminApp(
             ),
           ),
         ),
+        dashboardStatsProvider.overrideWithValue(
+          AsyncData(
+            DashboardStats.fromData(
+              activeUsers: const [],
+              publications: const [],
+              centerOffers: const [],
+              requests: const [],
+            ),
+          ),
+        ),
         ...extraOverrides,
       ],
       child: Consumer(
@@ -358,3 +387,71 @@ Widget _adminApp(
         },
       ),
     );
+
+List<Override> _recyclingOverrides() => [
+      materialCategoryCatalogProvider.overrideWith(
+        (ref) => Stream.value(MaterialCategoryCatalog.fallback),
+      ),
+      recyclingTransactionsProvider.overrideWith(
+        (ref) => Stream.value(const <RecyclingTransaction>[]),
+      ),
+      completedRequestPointsProvider.overrideWith((ref) => Stream.value(0)),
+      ofertasProvider((
+        estado: null,
+        centroId: null,
+        recolectorId: null,
+        desde: null,
+        hasta: null,
+      )).overrideWith((ref) => Stream.value(const <OfertaEntity>[])),
+      ofertaRepositoryProvider.overrideWithValue(_TestOfertaRepository()),
+      usersProvider((zona: null, estadoActivo: null))
+          .overrideWith((ref) => Stream.value(const <UserEntity>[])),
+      recolectoresProvider((zona: null, estadoActivo: null))
+          .overrideWith((ref) => Stream.value(const <RecolectorEntity>[])),
+      centrosAcopioProvider((zona: null, estadoActivo: null))
+          .overrideWith((ref) => Stream.value(const <CentroAcopioEntity>[])),
+    ];
+
+class _TestOfertaRepository implements OfertaRepository {
+  @override
+  Stream<List<OfertaEntity>> watchAll({
+    String? estado,
+    String? centroId,
+    String? recolectorId,
+    DateTime? desde,
+    DateTime? hasta,
+  }) =>
+      Stream.value(const []);
+
+  @override
+  Stream<OfertaEntity> watchById(String id) => const Stream.empty();
+
+  @override
+  Future<void> create(OfertaEntity entity) async {}
+
+  @override
+  Future<void> accept(String id) async {}
+
+  @override
+  Future<void> markInTransit(String id) async {}
+
+  @override
+  Future<void> finalize(String id, {double? weightConfirmed}) async {}
+
+  @override
+  Future<void> cancel(String id, {String? reason}) async {}
+
+  @override
+  Future<List<OfertaEntity>> search(String query) async => const [];
+
+  @override
+  Stream<List<NegociacionOfertaEntity>> watchNegotiationOffers({
+    String? publicacionId,
+    String? ciudadanoId,
+    String? recolectorId,
+  }) =>
+      Stream.value(const []);
+
+  @override
+  Future<void> createNegotiationOffer(NegociacionOfertaEntity entity) async {}
+}

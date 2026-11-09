@@ -76,6 +76,61 @@ class FirestoreUserRepository implements UserRepository {
   }
 
   @override
+  Future<void> adjustReputationPoints(
+    String id, {
+    double? reputation,
+    int? pointsDelta,
+    required String reason,
+  }) async {
+    if ((reputation == null) == (pointsDelta == null)) {
+      throw ArgumentError(
+        'Indica reputación o delta de puntos, pero no ambos.',
+      );
+    }
+    if (reputation != null && (reputation < 1 || reputation > 5)) {
+      throw RangeError.range(reputation, 1, 5, 'reputation');
+    }
+    final trimmedReason = reason.trim();
+    if (trimmedReason.isEmpty) {
+      throw ArgumentError.value(reason, 'reason', 'El motivo es obligatorio.');
+    }
+
+    final reference = _firestore.collection(_collection).doc(id);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    late Map<String, dynamic> before;
+    late Map<String, dynamic> after;
+    await _firestore.runTransaction((transaction) async {
+      final snapshot = await transaction.get(reference);
+      if (!snapshot.exists) throw StateError('No existe el usuario $id.');
+      final data = snapshot.data() ?? const <String, dynamic>{};
+      final currentReputation = _numberValue(data['reputacion']);
+      final currentPoints = _intValue(data['puntos']);
+      before = {
+        'reputacion': currentReputation,
+        'puntos': currentPoints,
+      };
+      after = {
+        'reputacion': reputation ?? currentReputation,
+        'puntos': currentPoints + (pointsDelta ?? 0),
+        'motivo': trimmedReason,
+        'updatedAt': now,
+      };
+      transaction.update(reference, {
+        if (reputation != null) 'reputacion': reputation,
+        if (pointsDelta != null) 'puntos': currentPoints + pointsDelta,
+        'updatedAt': now,
+      });
+    });
+    await _auditService.log(
+      action: 'reputacion_ajustada',
+      entityType: 'user',
+      entityId: id,
+      before: before,
+      after: after,
+    );
+  }
+
+  @override
   Future<void> toggleActive(String id) => _toggleActive(id);
 
   @override
@@ -130,6 +185,10 @@ class FirestoreUserRepository implements UserRepository {
         for (final key in changes.keys)
           if (before.containsKey(key)) key: before[key]
       };
+
+  double _numberValue(dynamic value) => value is num ? value.toDouble() : 0;
+
+  int _intValue(dynamic value) => value is num ? value.toInt() : 0;
 
   static const Set<String> _allowedFields = {
     'nombre',

@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/theme/app_colors.dart';
 import '../../../providers/mapa_providers.dart';
+import '../../../providers/material_category_provider.dart';
+import '../../../widgets/category_catalog_notice.dart';
 
 class FiltrosMapaPanel extends ConsumerWidget {
   const FiltrosMapaPanel({super.key});
@@ -15,21 +17,13 @@ class FiltrosMapaPanel extends ConsumerWidget {
     'Zona Oeste',
     'Centro'
   ];
-  static const materials = [
-    null,
-    'plastico',
-    'vidrio',
-    'metal',
-    'papel',
-    'organico',
-    'textil',
-    'electronico'
-  ];
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final filters = ref.watch(mapaFiltrosProvider);
     final notifier = ref.read(mapaFiltrosProvider.notifier);
+    final catalog = ref.watch(materialCategoryCatalogProvider).valueOrNull ??
+        MaterialCategoryCatalog.fallback;
+    final selectedMaterial = materialCategoryId(filters.material, catalog);
     return Card(
       color: AppColors.surface,
       child: Padding(
@@ -37,6 +31,7 @@ class FiltrosMapaPanel extends ConsumerWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           const Text('Filtros del mapa',
               style: TextStyle(fontWeight: FontWeight.bold)),
+          CategoryCatalogNotice(catalog: catalog),
           CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               dense: true,
@@ -73,12 +68,16 @@ class FiltrosMapaPanel extends ConsumerWidget {
                   material: filters.material)),
           const SizedBox(height: 8),
           DropdownButtonFormField<String?>(
-              value: filters.material,
+              value: selectedMaterial,
               decoration: const InputDecoration(labelText: 'Material'),
-              items: materials
-                  .map((material) => DropdownMenuItem(
-                      value: material, child: Text(material ?? 'Todos')))
-                  .toList(),
+              items: [
+                const DropdownMenuItem(value: null, child: Text('Todos')),
+                for (final material in catalog.categories)
+                  DropdownMenuItem(
+                    value: material.id,
+                    child: Text(material.displayName),
+                  ),
+              ].toList(),
               onChanged: (value) => notifier.state = MapaFiltros(
                   mostrarRecolectores: filters.mostrarRecolectores,
                   mostrarCentros: filters.mostrarCentros,

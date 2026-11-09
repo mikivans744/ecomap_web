@@ -9,12 +9,14 @@ import 'oferta_status_timeline.dart';
 class OfertaDetailDialog extends StatelessWidget {
   const OfertaDetailDialog({
     required this.oferta,
+    this.categoryLabel,
     this.recolector,
     this.centro,
     super.key,
   });
 
   final OfertaEntity oferta;
+  final String? categoryLabel;
   final RecolectorEntity? recolector;
   final CentroAcopioEntity? centro;
 
@@ -33,7 +35,7 @@ class OfertaDetailDialog extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               _row('Estado', oferta.estado),
-              _row('Material', oferta.categoria),
+              _row('Material', categoryLabel ?? oferta.categoria),
               _row('Peso', '${oferta.peso} kg'),
               _row('Precio sugerido', '\$${oferta.precioSugerido}'),
               _row('Fecha de oferta', _formatDate(oferta.createdAt)),

@@ -5,6 +5,7 @@ import '../../../../domain/entities/publicacion_entity.dart';
 
 class PublicacionCard extends StatelessWidget {
   final PublicacionEntity publicacion;
+  final String? categoryLabel;
   final VoidCallback? onTap;
   final VoidCallback? onToggleActive;
   final String? vendedorEmail;
@@ -15,6 +16,7 @@ class PublicacionCard extends StatelessWidget {
   const PublicacionCard({
     super.key,
     required this.publicacion,
+    this.categoryLabel,
     this.onTap,
     this.onToggleActive,
     this.vendedorEmail,
@@ -65,7 +67,7 @@ class PublicacionCard extends StatelessWidget {
               children: [
                 Chip(
                   avatar: const Icon(Icons.recycling_outlined, size: 16),
-                  label: Text(publicacion.categoria),
+                  label: Text(categoryLabel ?? publicacion.categoria),
                   visualDensity: VisualDensity.compact,
                 ),
                 Text('Peso: ${_number(publicacion.peso)} kg'),

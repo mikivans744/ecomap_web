@@ -95,7 +95,7 @@ void main() {
     );
   });
 
-  testWidgets('resolves tickets, edits FAQs, and queues push requests',
+  testWidgets('responds to tickets, edits FAQs, and queues push requests',
       (tester) async {
     tester.view.physicalSize = const Size(1440, 1000);
     tester.view.devicePixelRatio = 1;
@@ -120,19 +120,15 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('support_ticket_ticket-1')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('ticket_status_editor')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Resuelto').last);
+    await tester.tap(find.byKey(const Key('respond_ticket_ticket-1')));
     await tester.pumpAndSettle();
     await tester.enterText(
       find.byKey(const Key('ticket_response_field')),
       'Acceso restablecido',
     );
-    await tester.tap(find.text('Guardar'));
+    await tester.tap(find.text('Enviar respuesta'));
     await tester.pumpAndSettle();
-    expect(repository.updatedTicketStatus, 'resolved');
+    expect(repository.updatedTicketStatus, 'RESPONDIDO');
     expect(repository.updatedTicketResponse, 'Acceso restablecido');
 
     await tester.tap(find.byKey(const Key('create_support_ticket')));
@@ -257,6 +253,9 @@ class _FakeSupportRepository implements SupportRepository {
     savedFaqId = id;
     savedFaqQuestion = question;
   }
+
+  @override
+  Future<void> markNotificationRead(String id) async {}
 
   @override
   Future<void> deleteFaq(String id) async {}

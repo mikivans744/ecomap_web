@@ -18,7 +18,7 @@ abstract interface class OfertaRepository {
 
   Future<void> markInTransit(String id);
 
-  Future<void> finalize(String id);
+  Future<void> finalize(String id, {double? weightConfirmed});
 
   Future<void> cancel(String id, {String? reason});
 

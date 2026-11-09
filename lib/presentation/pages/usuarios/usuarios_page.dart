@@ -265,7 +265,10 @@ class _UsuariosPageState extends ConsumerState<UsuariosPage> {
                     DataColumn(
                         label: SizedBox(width: 100, child: Text('Zona'))),
                     DataColumn(
-                      label: SizedBox(width: 100, child: Text('Reputación')),
+                      label: SizedBox(
+                        width: 130,
+                        child: Text('Reputación / puntos'),
+                      ),
                     ),
                     DataColumn(
                         label: SizedBox(width: 100, child: Text('Estado'))),
@@ -274,7 +277,7 @@ class _UsuariosPageState extends ConsumerState<UsuariosPage> {
                           SizedBox(width: 120, child: Text('Fecha Registro')),
                     ),
                     DataColumn(
-                        label: SizedBox(width: 150, child: Text('Acciones'))),
+                        label: SizedBox(width: 190, child: Text('Acciones'))),
                   ],
                   rows: pageUsers
                       .map(
@@ -287,10 +290,22 @@ class _UsuariosPageState extends ConsumerState<UsuariosPage> {
                             DataCell(_ellipsizedCell(user.zona, 100)),
                             DataCell(
                               SizedBox(
-                                width: 100,
-                                child: Text(
-                                  '${user.reputacion.toStringAsFixed(1)} ★',
-                                  maxLines: 1,
+                                width: 130,
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      '${user.reputacion.toStringAsFixed(1)} ★',
+                                      maxLines: 1,
+                                    ),
+                                    Text(
+                                      '${user.puntos} puntos',
+                                      maxLines: 1,
+                                      style:
+                                          Theme.of(context).textTheme.bodySmall,
+                                    ),
+                                  ],
                                 ),
                               ),
                             ),
@@ -303,7 +318,7 @@ class _UsuariosPageState extends ConsumerState<UsuariosPage> {
                             ),
                             DataCell(
                               SizedBox(
-                                width: 150,
+                                width: 190,
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
@@ -315,6 +330,13 @@ class _UsuariosPageState extends ConsumerState<UsuariosPage> {
                                           const Icon(Icons.visibility_outlined),
                                     ),
                                     if (permissions.canManageUsers) ...[
+                                      IconButton(
+                                        tooltip: 'Ajustar reputación/puntos',
+                                        visualDensity: VisualDensity.compact,
+                                        onPressed: () =>
+                                            _adjustReputationPoints(user),
+                                        icon: const Icon(Icons.stars_outlined),
+                                      ),
                                       IconButton(
                                         tooltip: user.estadoActivo
                                             ? 'Bloquear usuario'
@@ -442,6 +464,7 @@ class _UsuariosPageState extends ConsumerState<UsuariosPage> {
                 _detailRow('Zona', user.zona),
                 _detailRow(
                     'Reputación', '${user.reputacion.toStringAsFixed(1)} ★'),
+                _detailRow('Puntos', user.puntos.toString()),
                 _detailRow('Total reciclado', '${user.totalReciclado} kg'),
                 _detailRow('Fecha registro', _formatDate(user.fechaRegistro)),
                 _detailRow('Estado', user.estadoActivo ? 'Activo' : 'Inactivo'),
@@ -476,6 +499,134 @@ class _UsuariosPageState extends ConsumerState<UsuariosPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _adjustReputationPoints(UserEntity user) async {
+    if (!_requireUserManagementPermission()) return;
+
+    final valueController = TextEditingController();
+    final reasonController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    var adjustmentType = 'reputacion';
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Ajustar reputación/puntos'),
+          content: SizedBox(
+            width: 440,
+            child: Form(
+              key: formKey,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: adjustmentType,
+                    decoration: const InputDecoration(labelText: 'Ajuste'),
+                    items: const [
+                      DropdownMenuItem(
+                        value: 'reputacion',
+                        child: Text('Reputación'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'puntos',
+                        child: Text('Puntos'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setDialogState(() {
+                          adjustmentType = value;
+                          valueController.clear();
+                        });
+                      }
+                    },
+                  ),
+                  TextFormField(
+                    key: const Key('user_adjustment_value'),
+                    controller: valueController,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                      signed: true,
+                    ),
+                    decoration: InputDecoration(
+                      labelText: adjustmentType == 'reputacion'
+                          ? 'Nueva reputación (1.0–5.0)'
+                          : 'Delta de puntos (+/-)',
+                    ),
+                    validator: (value) {
+                      final parsed = double.tryParse(value?.trim() ?? '');
+                      if (parsed == null) return 'Ingresa un valor válido.';
+                      if (adjustmentType == 'reputacion') {
+                        if (parsed < 1 || parsed > 5) {
+                          return 'La reputación debe estar entre 1.0 y 5.0.';
+                        }
+                      } else if (parsed != parsed.roundToDouble()) {
+                        return 'El delta de puntos debe ser un entero.';
+                      }
+                      return null;
+                    },
+                  ),
+                  TextFormField(
+                    key: const Key('user_adjustment_reason'),
+                    controller: reasonController,
+                    decoration: const InputDecoration(labelText: 'Motivo'),
+                    minLines: 2,
+                    maxLines: 4,
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'El motivo es obligatorio.'
+                        : null,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancelar'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (formKey.currentState?.validate() ?? false) {
+                  Navigator.pop(dialogContext, true);
+                }
+              },
+              child: const Text('Guardar ajuste'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved == true && mounted) {
+      try {
+        final value = double.parse(valueController.text.trim());
+        await ref.read(userRepositoryProvider).adjustReputationPoints(
+              user.uid,
+              reputation: adjustmentType == 'reputacion' ? value : null,
+              pointsDelta: adjustmentType == 'puntos' ? value.toInt() : null,
+              reason: reasonController.text.trim(),
+            );
+        if (mounted) {
+          if (_searchQuery.isNotEmpty) {
+            ref.invalidate(userSearchProvider(_searchQuery));
+          } else {
+            ref.invalidate(usersProvider((zona: null, estadoActivo: true)));
+            ref.invalidate(usersProvider((zona: null, estadoActivo: false)));
+          }
+          _showMessage('Ajuste guardado y registrado en auditoría.');
+        }
+      } catch (error, stackTrace) {
+        debugPrint(
+            'No se pudo ajustar reputación/puntos de ${user.uid}: $error\n$stackTrace');
+        if (mounted) {
+          _showMessage('No se pudo guardar el ajuste.', isError: true);
+        }
+      }
+    }
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    valueController.dispose();
+    reasonController.dispose();
   }
 
   Future<void> _confirmToggleActive(

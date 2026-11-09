@@ -54,3 +54,5 @@ secrets.properties
 **/service-account.json
 .firebase/
 .aider.*
+.firebase/
+.vscode/

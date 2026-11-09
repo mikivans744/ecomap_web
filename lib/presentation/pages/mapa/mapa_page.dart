@@ -8,6 +8,7 @@ import '../../../domain/entities/centro_acopio_entity.dart';
 import '../../../domain/entities/publicacion_entity.dart';
 import '../../../domain/entities/recolector_entity.dart';
 import '../../providers/mapa_providers.dart';
+import '../../providers/material_category_provider.dart';
 import '../../widgets/scaffold_with_navigation.dart';
 import 'widgets/filtros_mapa_panel.dart';
 import 'widgets/marcador_centro.dart';
@@ -23,6 +24,9 @@ class MapaPage extends ConsumerWidget {
     final centersAsync = ref.watch(centrosMapaProvider);
     final collectorsAsync = ref.watch(recolectoresMapaProvider);
     final publicationsAsync = ref.watch(publicacionesMapaProvider);
+    final categoryCatalog =
+        ref.watch(materialCategoryCatalogProvider).valueOrNull ??
+            MaterialCategoryCatalog.fallback;
     final filters = ref.watch(mapaFiltrosProvider);
     final centers = centersAsync.valueOrNull ?? const <CentroAcopioEntity>[];
     final collectors =
@@ -35,6 +39,7 @@ class MapaPage extends ConsumerWidget {
       centers: centers,
       collectors: collectors,
       publications: publications,
+      categoryCatalog: categoryCatalog,
     );
     final error =
         centersAsync.error ?? collectorsAsync.error ?? publicationsAsync.error;
@@ -153,6 +158,7 @@ class MapaPage extends ConsumerWidget {
     required List<CentroAcopioEntity> centers,
     required List<RecolectorEntity> collectors,
     required List<PublicacionEntity> publications,
+    required MaterialCategoryCatalog categoryCatalog,
   }) {
     final markers = <Marker>[];
 
@@ -254,7 +260,13 @@ class MapaPage extends ConsumerWidget {
                   context,
                   title: publication.titulo,
                   rows: [
-                    (label: 'Categoría', value: _orDash(publication.categoria)),
+                    (
+                      label: 'Categoría',
+                      value: displayMaterialCategory(
+                        publication.categoria,
+                        categoryCatalog,
+                      ),
+                    ),
                     (label: 'Estado', value: publication.estado),
                     (
                       label: 'Peso',

@@ -9,9 +9,11 @@ import '../../../domain/entities/negociacion_oferta_entity.dart';
 import '../../../domain/entities/recolector_entity.dart';
 import '../../../domain/repositories/oferta_repository.dart';
 import '../../providers/centro_acopio_providers.dart';
+import '../../providers/material_category_provider.dart';
 import '../../providers/oferta_providers.dart';
 import '../../providers/recolector_providers.dart';
 import '../../widgets/async_states.dart';
+import '../../widgets/category_catalog_notice.dart';
 import '../../widgets/scaffold_with_navigation.dart';
 import 'widgets/oferta_card.dart';
 import 'widgets/oferta_detail_dialog.dart';
@@ -27,6 +29,7 @@ class _OfertasPageState extends ConsumerState<OfertasPage> {
   static const String _all = 'todos';
   String _query = '';
   String _status = _all;
+  String _material = _all;
   String _centerId = _all;
   String _collectorId = _all;
   DateTimeRange? _dateRange;
@@ -53,6 +56,9 @@ class _OfertasPageState extends ConsumerState<OfertasPage> {
       recolectoresProvider((zona: null, estadoActivo: null)),
     );
     final repository = ref.watch(ofertaRepositoryProvider);
+    final categoryCatalog =
+        ref.watch(materialCategoryCatalogProvider).valueOrNull ??
+            MaterialCategoryCatalog.fallback;
 
     return DefaultTabController(
       length: 2,
@@ -90,7 +96,11 @@ class _OfertasPageState extends ConsumerState<OfertasPage> {
                   padding: const EdgeInsets.all(20),
                   child: Column(
                     children: [
-                      _buildFilters(centersAsync, collectorsAsync),
+                      _buildFilters(
+                        centersAsync,
+                        collectorsAsync,
+                        categoryCatalog,
+                      ),
                       const SizedBox(height: 16),
                       Expanded(
                         child: offersAsync.when(
@@ -106,6 +116,7 @@ class _OfertasPageState extends ConsumerState<OfertasPage> {
                                 const <RecolectorEntity>[],
                             repository,
                             canManageOffers,
+                            categoryCatalog,
                           ),
                         ),
                       ),
@@ -189,69 +200,91 @@ class _OfertasPageState extends ConsumerState<OfertasPage> {
   Widget _buildFilters(
     AsyncValue<List<CentroAcopioEntity>> centersAsync,
     AsyncValue<List<RecolectorEntity>> collectorsAsync,
+    MaterialCategoryCatalog categoryCatalog,
   ) {
     final centers = centersAsync.valueOrNull ?? const <CentroAcopioEntity>[];
     final collectors =
         collectorsAsync.valueOrNull ?? const <RecolectorEntity>[];
-    return LayoutBuilder(
-      builder: (context, constraints) => Wrap(
-        spacing: 14,
-        runSpacing: 12,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          SizedBox(
-            width: constraints.maxWidth < 640 ? constraints.maxWidth : 300,
-            child: TextField(
-              key: const Key('oferta_search_field'),
-              onChanged: (value) => setState(() => _query = value.trim()),
-              decoration: const InputDecoration(
-                prefixIcon: Icon(Icons.search),
-                hintText: 'Buscar centro o recolector...',
-                border: OutlineInputBorder(),
-                isDense: true,
+    if (_material != _all &&
+        !categoryCatalog.categories
+            .any((category) => category.id == _material)) {
+      _material = _all;
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        CategoryCatalogNotice(catalog: categoryCatalog),
+        LayoutBuilder(
+          builder: (context, constraints) => Wrap(
+            spacing: 14,
+            runSpacing: 12,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              SizedBox(
+                width: constraints.maxWidth < 640 ? constraints.maxWidth : 300,
+                child: TextField(
+                  key: const Key('oferta_search_field'),
+                  onChanged: (value) => setState(() => _query = value.trim()),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search),
+                    hintText: 'Buscar centro o recolector...',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                  ),
+                ),
               ),
-            ),
-          ),
-          _dropdown(
-            label: 'Estado',
-            value: _status,
-            items: const {
-              _all: 'Todos los estados',
-              'OFERTADA': 'Ofertadas',
-              'ACEPTADA': 'Aceptadas',
-              'ENTREGADA': 'Entregadas',
-              'RECHAZADA': 'Rechazadas',
-            },
-            onChanged: (value) => setState(() => _status = value),
-          ),
-          _dropdown(
-            label: 'Centro',
-            value: _centerId,
-            items: {
-              _all: 'Todos los centros',
-              for (final center in centers) center.id: center.nombre,
-            },
-            onChanged: (value) => setState(() => _centerId = value),
-          ),
-          _dropdown(
-            label: 'Recolector',
-            value: _collectorId,
-            items: {
-              _all: 'Todos los recolectores',
-              for (final collector in collectors)
-                collector.id: collector.nombreCompleto,
-            },
-            onChanged: (value) => setState(() => _collectorId = value),
-          ),
-          if (_dateRange != null)
-            Chip(
-              avatar: const Icon(Icons.event_outlined, size: 16),
-              label: Text(
-                '${_shortDate(_dateRange!.start)} – ${_shortDate(_dateRange!.end)}',
+              _dropdown(
+                label: 'Estado',
+                value: _status,
+                items: const {
+                  _all: 'Todos los estados',
+                  'OFERTADA': 'Ofertadas',
+                  'ACEPTADA': 'Aceptadas',
+                  'ENTREGADA': 'Entregadas',
+                  'RECHAZADA': 'Rechazadas',
+                },
+                onChanged: (value) => setState(() => _status = value),
               ),
-            ),
-        ],
-      ),
+              _dropdown(
+                label: 'Categoría',
+                value: _material,
+                items: {
+                  _all: 'Todas las categorías',
+                  for (final category in categoryCatalog.categories)
+                    category.id: category.displayName,
+                },
+                onChanged: (value) => setState(() => _material = value),
+              ),
+              _dropdown(
+                label: 'Centro',
+                value: _centerId,
+                items: {
+                  _all: 'Todos los centros',
+                  for (final center in centers) center.id: center.nombre,
+                },
+                onChanged: (value) => setState(() => _centerId = value),
+              ),
+              _dropdown(
+                label: 'Recolector',
+                value: _collectorId,
+                items: {
+                  _all: 'Todos los recolectores',
+                  for (final collector in collectors)
+                    collector.id: collector.nombreCompleto,
+                },
+                onChanged: (value) => setState(() => _collectorId = value),
+              ),
+              if (_dateRange != null)
+                Chip(
+                  avatar: const Icon(Icons.event_outlined, size: 16),
+                  label: Text(
+                    '${_shortDate(_dateRange!.start)} – ${_shortDate(_dateRange!.end)}',
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -312,6 +345,7 @@ class _OfertasPageState extends ConsumerState<OfertasPage> {
     List<RecolectorEntity> collectors,
     OfertaRepository repository,
     bool canManageOffers,
+    MaterialCategoryCatalog categoryCatalog,
   ) {
     final centersById = {for (final item in centers) item.id: item};
     final collectorsById = {for (final item in collectors) item.id: item};
@@ -319,6 +353,8 @@ class _OfertasPageState extends ConsumerState<OfertasPage> {
       final center = centersById[offer.centroId];
       final collector = collectorsById[offer.recolectorId];
       final matchesStatus = _status == _all || offer.estado == _status;
+      final matchesMaterial = _material == _all ||
+          materialCategoryId(offer.categoria, categoryCatalog) == _material;
       final matchesCenter = _centerId == _all || offer.centroId == _centerId;
       final matchesCollector =
           _collectorId == _all || offer.recolectorId == _collectorId;
@@ -335,6 +371,7 @@ class _OfertasPageState extends ConsumerState<OfertasPage> {
                     .subtract(const Duration(microseconds: 1)),
               ));
       return matchesStatus &&
+          matchesMaterial &&
           matchesCenter &&
           matchesCollector &&
           matchesQuery &&
@@ -356,6 +393,8 @@ class _OfertasPageState extends ConsumerState<OfertasPage> {
         final actions = _actions(offer, repository, canManageOffers);
         return OfertaCard(
           oferta: offer,
+          categoryLabel:
+              displayMaterialCategory(offer.categoria, categoryCatalog),
           recolectorNombre: collector?.nombreCompleto ?? offer.recolectorId,
           centroNombre: center?.nombre ?? 'Centro sin asignar',
           placa: collector?.vehiculoInfo['placa'] as String?,
@@ -364,6 +403,8 @@ class _OfertasPageState extends ConsumerState<OfertasPage> {
             context: context,
             builder: (context) => OfertaDetailDialog(
               oferta: offer,
+              categoryLabel:
+                  displayMaterialCategory(offer.categoria, categoryCatalog),
               recolector: collector,
               centro: center,
             ),
@@ -402,12 +443,7 @@ class _OfertasPageState extends ConsumerState<OfertasPage> {
       ));
     } else if (offer.estado == 'ACEPTADA') {
       actions.add(FilledButton.icon(
-        onPressed: () => _runAction(
-          offer,
-          repository,
-          () => _confirmFinalize(offer, repository),
-          success: 'Entrega confirmada.',
-        ),
+        onPressed: () => _confirmFinalize(offer, repository),
         icon: const Icon(Icons.task_alt),
         label: const Text('Confirmar entrega'),
       ));
@@ -421,12 +457,45 @@ class _OfertasPageState extends ConsumerState<OfertasPage> {
   ) async {
     if (!_requireOfferPermission()) return;
 
+    final weightController = TextEditingController(
+      text: (offer.weightConfirmed ?? offer.peso).toString(),
+    );
+    final formKey = GlobalKey<FormState>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirmar recepción'),
-        content: const Text(
-          'Al finalizar, la publicación relacionada se marcará vendida y se liberará la capacidad comprometida del centro.',
+        content: SizedBox(
+          width: 440,
+          child: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'La publicación relacionada se marcará como entregada y '
+                  'se sumarán puntos al recolector y al centro.',
+                ),
+                TextFormField(
+                  key: const Key('confirmed_offer_weight'),
+                  controller: weightController,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(
+                    labelText: 'Peso confirmado (kg)',
+                  ),
+                  validator: (value) {
+                    final weight = double.tryParse(value?.trim() ?? '');
+                    if (weight == null || !weight.isFinite || weight < 0) {
+                      return 'Ingresa un peso válido no negativo.';
+                    }
+                    return null;
+                  },
+                ),
+              ],
+            ),
+          ),
         ),
         actions: [
           TextButton(
@@ -434,7 +503,11 @@ class _OfertasPageState extends ConsumerState<OfertasPage> {
             child: const Text('Volver'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, true),
+            onPressed: () {
+              if (formKey.currentState?.validate() ?? false) {
+                Navigator.pop(context, true);
+              }
+            },
             child: const Text('Confirmar recepción'),
           ),
         ],
@@ -444,10 +517,14 @@ class _OfertasPageState extends ConsumerState<OfertasPage> {
       await _runAction(
         offer,
         repository,
-        () => repository.finalize(offer.id),
+        () => repository.finalize(
+          offer.id,
+          weightConfirmed: double.parse(weightController.text.trim()),
+        ),
         success: 'Oferta finalizada.',
       );
     }
+    weightController.dispose();
   }
 
   Future<void> _runAction(

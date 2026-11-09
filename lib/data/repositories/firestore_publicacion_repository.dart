@@ -63,15 +63,68 @@ class FirestorePublicacionRepository implements PublicacionRepository {
     }
     final changes = _canonicalChanges(data);
     if (changes.isEmpty) return;
-    await reference.update(changes);
     if (changes['estado'] == 'ENTREGADO') {
+      final userId =
+          current['usuarioId'] as String? ?? current['userId'] as String? ?? '';
+      if (userId.isEmpty) {
+        throw StateError(
+          'La publicación no tiene un usuario propietario válido.',
+        );
+      }
+      final userReference = _firestore.collection('usuarios').doc(userId);
+      final now = DateTime.now().millisecondsSinceEpoch;
+      late int previousPoints;
+      late int nextPoints;
+      await _firestore.runTransaction((transaction) async {
+        final publicationSnapshot = await transaction.get(reference);
+        if (!publicationSnapshot.exists) {
+          throw StateError('No existe la publicación $id.');
+        }
+        final publicationData =
+            publicationSnapshot.data() ?? const <String, dynamic>{};
+        if (publicationData['estado'] == 'ENTREGADO') {
+          throw const PublicacionAlreadySold();
+        }
+        final userSnapshot = await transaction.get(userReference);
+        if (!userSnapshot.exists) {
+          throw StateError('No existe el usuario asociado: $userId.');
+        }
+        final userData = userSnapshot.data() ?? const <String, dynamic>{};
+        final currentPoints =
+            userData['puntos'] is num ? (userData['puntos'] as num).toInt() : 0;
+        final weightValue =
+            publicationData['pesoKg'] ?? publicationData['peso'];
+        if (weightValue is! num ||
+            !weightValue.isFinite ||
+            weightValue < 0) {
+          throw StateError(
+            'La publicación no tiene un peso válido para otorgar puntos.',
+          );
+        }
+        final weight = weightValue.toDouble();
+        previousPoints = currentPoints;
+        nextPoints = currentPoints + weight.round();
+        transaction.update(reference, {...changes, 'updatedAt': now});
+        transaction.update(userReference, {
+          'puntos': nextPoints,
+          'updatedAt': now,
+        });
+      });
       await _auditService.log(
         action: 'publication_sold',
         entityType: 'publicacion',
         entityId: id,
         before: {'estado': current['estado']},
-        after: changes,
+        after: {
+          ...changes,
+          'puntosCiudadano': {
+            'before': previousPoints,
+            'after': nextPoints,
+          },
+        },
       );
+    } else {
+      await reference.update(changes);
     }
   }
 
@@ -89,9 +142,8 @@ class FirestorePublicacionRepository implements PublicacionRepository {
     final nextState = currentlyActive ? 'CANCELADO' : 'DISPONIBLE';
     await reference.update({'estado': nextState});
     await _auditService.log(
-      action: currentlyActive
-          ? 'publication_deactivated'
-          : 'publication_activated',
+      action:
+          currentlyActive ? 'publication_deactivated' : 'publication_activated',
       entityType: 'publicacion',
       entityId: id,
       before: {'estado': current['estado']},
@@ -124,9 +176,7 @@ class FirestorePublicacionRepository implements PublicacionRepository {
         .map(PublicacionEntity.fromFirestore)
         .where((publication) =>
             publication.titulo.toLowerCase().contains(query.toLowerCase()) ||
-            publication.descripcion
-                .toLowerCase()
-                .contains(query.toLowerCase()))
+            publication.descripcion.toLowerCase().contains(query.toLowerCase()))
         .toList(growable: false);
   }
 
@@ -152,8 +202,7 @@ class FirestorePublicacionRepository implements PublicacionRepository {
         case 'estado':
           changes['estado'] = _canonicalState('${entry.value}');
         case 'estadoActivo':
-          changes['estado'] =
-              entry.value == true ? 'DISPONIBLE' : 'CANCELADO';
+          changes['estado'] = entry.value == true ? 'DISPONIBLE' : 'CANCELADO';
         case 'userId':
           changes['usuarioId'] = entry.value;
         case 'categoria':

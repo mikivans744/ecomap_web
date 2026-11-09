@@ -9,6 +9,13 @@ abstract interface class UserRepository {
 
   Future<void> update(String id, Map<String, dynamic> data);
 
+  Future<void> adjustReputationPoints(
+    String id, {
+    double? reputation,
+    int? pointsDelta,
+    required String reason,
+  });
+
   Future<void> toggleActive(String id);
 
   Future<List<UserEntity>> search(String query);

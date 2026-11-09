@@ -16,6 +16,10 @@ class _FakeUserRepository implements UserRepository {
 
   final List<UserEntity> users;
   String? toggledUserId;
+  String? adjustedUserId;
+  double? adjustedReputation;
+  int? adjustedPointsDelta;
+  String? adjustmentReason;
 
   @override
   Stream<List<UserEntity>> watchAll({String? zona, bool? estadoActivo}) async* {
@@ -35,6 +39,19 @@ class _FakeUserRepository implements UserRepository {
 
   @override
   Future<void> update(String id, Map<String, dynamic> data) async {}
+
+  @override
+  Future<void> adjustReputationPoints(
+    String id, {
+    double? reputation,
+    int? pointsDelta,
+    required String reason,
+  }) async {
+    adjustedUserId = id;
+    adjustedReputation = reputation;
+    adjustedPointsDelta = pointsDelta;
+    adjustmentReason = reason;
+  }
 
   @override
   Future<void> toggleActive(String id) async {
@@ -212,6 +229,43 @@ void main() {
     expect(find.byTooltip('Enviar recuperación'), findsNothing);
 
     expect(repository.toggledUserId, isNull);
+  });
+
+  testWidgets('records point adjustments with the required reason',
+      (tester) async {
+    tester.view.physicalSize = const Size(1440, 1100);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    final repository = _FakeUserRepository([_user(9)]);
+    await tester.pumpWidget(_page(repository));
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(
+      find.byTooltip('Ajustar reputación/puntos'),
+    );
+    await tester.tap(find.byTooltip('Ajustar reputación/puntos'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(DropdownButtonFormField<String>).last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Puntos').last);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('user_adjustment_value')),
+      '-3',
+    );
+    await tester.enterText(
+      find.byKey(const Key('user_adjustment_reason')),
+      'Corrección de puntos',
+    );
+    await tester.tap(find.text('Guardar ajuste'));
+    await tester.pumpAndSettle();
+
+    expect(repository.adjustedUserId, 'user-9');
+    expect(repository.adjustedReputation, isNull);
+    expect(repository.adjustedPointsDelta, -3);
+    expect(repository.adjustmentReason, 'Corrección de puntos');
   });
 
   test('registers the users route for an authenticated admin', () {
